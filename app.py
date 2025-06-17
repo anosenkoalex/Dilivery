@@ -113,6 +113,8 @@ def orders():
         if order:
             order.status = status
             db.session.commit()
+            flash('Статус заказа обновлён', 'success')
+        return redirect(url_for('orders'))
     orders = Order.query.all()
     return render_template('orders.html', orders=orders)
 

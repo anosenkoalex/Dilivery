@@ -25,7 +25,7 @@ login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 
 def admin_required(func):
@@ -281,7 +281,20 @@ def map_view():
             query = query.filter(Order.zone.in_(zones))
         else:
             query = query.filter(db.text('0=1'))
-    orders = query.all()
+    orders = [
+        {
+            'id': o.id,
+            'order_number': o.order_number,
+            'client_name': o.client_name,
+            'address': o.address,
+            'phone': o.phone,
+            'latitude': o.latitude,
+            'longitude': o.longitude,
+            'zone': o.zone,
+            'status': o.status,
+        }
+        for o in query.all()
+    ]
     zones = DeliveryZone.query.all()
     return render_template('map.html', orders=orders, zones=zones)
 
@@ -469,7 +482,14 @@ def import_orders_finish():
         db.session.add(order)
         imported += 1
     db.session.commit()
-    os.remove(path)
+    try:
+        os.remove(path)
+    except PermissionError:
+        time.sleep(1)
+        try:
+            os.remove(path)
+        except Exception as e:
+            print(f"[!] Ошибка удаления файла: {e}")
     flash(f'Импортировано заказов: {imported}', 'success')
     return render_template('import_result.html', count=imported)
 

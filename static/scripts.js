@@ -6,14 +6,15 @@ function initMap(orders, zones) {
   }).addTo(map);
 
   zones.forEach(function(z) {
-    var polygon = L.polygon(z.polygon_json.map(function(p){return [p[1],p[0]];}), {color: z.color}).addTo(map);
+    var polygon = L.polygon(z.polygon.map(function(p){ return [p[1], p[0]]; }), {color: z.color}).addTo(map);
     polygon.bindPopup(z.name);
   });
 
   orders.forEach(function(o){
-    if(o.latitude && o.longitude){
-      var marker = L.marker([o.latitude, o.longitude]).addTo(map);
-      marker.bindPopup('<b>'+o.order_number+'</b><br>'+o.client_name+'<br>'+o.address+'<br>Статус: '+o.status);
+    if(o.lat && o.lng){
+      var marker = L.marker([o.lat, o.lng]).addTo(map);
+      var popup = '<b>Заказ #' + o.id + '</b><br>' + o.address + '<br>Статус: ' + o.status;
+      marker.bindPopup(popup);
     }
   });
 }

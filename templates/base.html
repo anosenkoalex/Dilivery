@@ -18,6 +18,7 @@
         <li class="nav-item"><a class="nav-link" href="{{ url_for('zones') }}">Зоны</a></li>
         <li class="nav-item"><a class="nav-link" href="{{ url_for('couriers') }}">Курьеры</a></li>
         <li class="nav-item"><a class="nav-link" href="{{ url_for('history') }}">История</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('stats') }}">Статистика</a></li>
       </ul>
       {% if session.get('user') %}
         <span class="navbar-text me-3">{{ session['user'] }}</span>

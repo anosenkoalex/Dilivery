@@ -3,8 +3,9 @@ import csv
 import uuid
 import os
 from datetime import date, timedelta
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, jsonify
 from models import db, Order, DeliveryZone, Courier
+from sqlalchemy import func
 import openpyxl
 from io import BytesIO
 
@@ -329,6 +330,54 @@ def import_orders_finish():
     db.session.commit()
     os.remove(path)
     return render_template('import_result.html', count=imported)
+
+
+@app.route('/stats')
+@login_required
+def stats():
+    zones = DeliveryZone.query.all()
+    couriers = Courier.query.all()
+    return render_template('stats.html', zones=zones, couriers=couriers)
+
+
+@app.route('/stats/data')
+@login_required
+def stats_data():
+    period = request.args.get('period', 'today')
+    zone = request.args.get('zone')
+    courier_id = request.args.get('courier')
+
+    q = Order.query.filter_by(status='Доставлен')
+    today = date.today()
+    if period == 'today':
+        start = today
+    elif period == 'week':
+        start = today - timedelta(days=7)
+    elif period == 'month':
+        start = today - timedelta(days=30)
+    else:
+        start = None
+    if start:
+        q = q.filter(Order.delivered_at >= start)
+    if zone:
+        q = q.filter(Order.zone == zone)
+    if courier_id:
+        courier = Courier.query.get(int(courier_id))
+        if courier and courier.zones:
+            zones = [z.strip() for z in courier.zones.split(',') if z.strip()]
+            if zones:
+                q = q.filter(Order.zone.in_(zones))
+
+    daily = q.with_entities(Order.delivered_at, func.count()).group_by(Order.delivered_at).order_by(Order.delivered_at).all()
+    zone_data = q.with_entities(Order.zone, func.count()).group_by(Order.zone).all()
+
+    resp = {
+        'dates': [d[0].isoformat() if d[0] else '' for d in daily],
+        'counts': [d[1] for d in daily],
+        'zone_labels': [z[0] or '—' for z in zone_data],
+        'zone_counts': [z[1] for z in zone_data],
+    }
+    return jsonify(resp)
 
 
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Зоны доставки</h2>
+<div class="table-responsive">
 <table class="table table-striped mb-3">
     <thead>
         <tr><th>ID</th><th>Название</th><th>Цвет</th><th></th></tr>
@@ -19,6 +20,7 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 <div id="map" style="height:400px;"></div>
 {% endblock %}
 {% block scripts %}

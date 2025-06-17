@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Сопоставление столбцов</h2>
+<form method="post" action="{{ url_for('import_orders_finish') }}">
+  <input type="hidden" name="file_id" value="{{ file_id }}">
+  <div class="form-check mb-3">
+    <input class="form-check-input" type="checkbox" id="headerCheck" name="header" {% if header %}checked{% endif %}>
+    <label class="form-check-label" for="headerCheck">Первая строка содержит заголовки</label>
+  </div>
+  {% set fields = [('order_number','Номер заказа'), ('client_name','Имя клиента'), ('phone','Телефон'), ('address','Адрес')] %}
+  {% for field,label in fields %}
+  <div class="mb-3">
+    <label class="form-label">{{ label }}</label>
+    <select class="form-select" name="{{ field }}">
+      <option value="">-- Не использовать --</option>
+      {% for col in columns %}
+      <option value="{{ col.index }}">{{ col.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  {% endfor %}
+  <button type="submit" class="btn btn-primary">Импортировать</button>
+</form>
+{% endblock %}

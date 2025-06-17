@@ -1,7 +1,10 @@
 import json
+import csv
+import uuid
+import os
 from flask import Flask, render_template, request, redirect, url_for, session
 from models import db, Order, DeliveryZone, Courier
-import os
+import openpyxl
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'database.db')
@@ -34,6 +37,11 @@ def detect_zone(lat, lng):
         if point_in_polygon(lng, lat, polygon):
             return zone.name
     return None
+
+
+def geocode(address):
+    """Placeholder geocoder returning None coordinates."""
+    return None, None
 
 
 def init_demo_data():
@@ -129,6 +137,101 @@ def zones():
 def couriers():
     couriers = Courier.query.all()
     return render_template('couriers.html', couriers=couriers)
+
+
+def read_file_rows(path):
+    if path.lower().endswith('.csv'):
+        with open(path, newline='', encoding='utf-8-sig') as f:
+            return [row for row in csv.reader(f)]
+    wb = openpyxl.load_workbook(path, read_only=True)
+    sheet = wb.active
+    rows = []
+    for r in sheet.iter_rows(values_only=True):
+        rows.append([str(c) if c is not None else '' for c in r])
+    return rows
+
+
+@app.route('/orders/import', methods=['GET', 'POST'])
+@login_required
+def import_orders():
+    if request.method == 'POST' and 'file' in request.files:
+        file = request.files['file']
+        if file.filename == '':
+            return redirect(url_for('import_orders'))
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ['.csv', '.xlsx']:
+            return redirect(url_for('import_orders'))
+        uid = str(uuid.uuid4()) + ext
+        upload_dir = os.path.join(app.root_path, 'uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        path = os.path.join(upload_dir, uid)
+        file.save(path)
+        rows = read_file_rows(path)
+        first = rows[0] if rows else []
+        columns = [{'index': i, 'name': v or f"Column {i+1}"} for i, v in enumerate(first)]
+        return render_template('import_mapping.html', file_id=uid, columns=columns, header=True)
+    return render_template('import_upload.html')
+
+
+@app.route('/orders/import/finish', methods=['POST'])
+@login_required
+def import_orders_finish():
+    file_id = request.form.get('file_id')
+    if not file_id:
+        return redirect(url_for('import_orders'))
+    path = os.path.join(app.root_path, 'uploads', file_id)
+    if not os.path.exists(path):
+        return redirect(url_for('import_orders'))
+    header = request.form.get('header') == 'on'
+    mapping = {}
+    for field in ['order_number', 'client_name', 'phone', 'address']:
+        val = request.form.get(field)
+        mapping[field] = int(val) if val and val.isdigit() else None
+    rows = read_file_rows(path)
+    if header:
+        rows = rows[1:]
+    counter = Order.query.count() + 1
+
+    def gen_order():
+        nonlocal counter
+        num = f"ORD{counter:03d}"
+        counter += 1
+        return num
+
+    imported = 0
+    for r in rows:
+        client_idx = mapping['client_name']
+        addr_idx = mapping['address']
+        if client_idx is None or addr_idx is None:
+            break
+        if client_idx >= len(r) or addr_idx >= len(r):
+            continue
+        client_name = str(r[client_idx]).strip()
+        address = str(r[addr_idx]).strip()
+        if not client_name or not address:
+            continue
+        if mapping['order_number'] is not None and mapping['order_number'] < len(r):
+            onum = str(r[mapping['order_number']]).strip()
+        else:
+            onum = ''
+        order_number = onum if onum else gen_order()
+        phone = ''
+        if mapping['phone'] is not None and mapping['phone'] < len(r):
+            phone = str(r[mapping['phone']]).strip()
+        lat, lng = geocode(address)
+        zone = detect_zone(lat, lng) if lat and lng else None
+        order = Order(order_number=order_number,
+                      client_name=client_name,
+                      phone=phone,
+                      address=address,
+                      latitude=lat,
+                      longitude=lng,
+                      zone=zone)
+        db.session.add(order)
+        imported += 1
+    db.session.commit()
+    os.remove(path)
+    return render_template('import_result.html', count=imported)
 
 
 if __name__ == '__main__':

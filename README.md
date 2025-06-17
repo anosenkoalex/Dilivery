@@ -10,3 +10,4 @@ python app.py
 ```
 
 On first start demo data will be generated automatically. Configuration values can be changed in `config.py` or via environment variables.
+\nThe application uses OpenStreetMap Nominatim for geocoding. Requests are limited to one per second.

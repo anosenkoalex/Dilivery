@@ -12,6 +12,7 @@ from config import Config
 from sqlalchemy import func
 import openpyxl
 from io import BytesIO
+from geocode import geocode_address
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -76,12 +77,6 @@ def assign_courier_for_zone(zone_name):
             if zone_name in zones:
                 return c
     return None
-
-
-def geocode(address):
-    """Placeholder geocoder returning None coordinates."""
-    return None, None
-
 
 def populate_demo_data():
     """Populate database with demo zones, couriers and orders."""
@@ -202,7 +197,7 @@ def update_order(order_id):
     order.address = request.form.get('address', order.address)
     order.note = request.form.get('note', order.note)
     if order.address != old_address:
-        lat, lng = geocode(order.address)
+        lat, lng = geocode_address(order.address)
         order.latitude = lat
         order.longitude = lng
         if lat and lng:
@@ -458,7 +453,7 @@ def import_orders_finish():
         phone = ''
         if mapping['phone'] is not None and mapping['phone'] < len(r):
             phone = str(r[mapping['phone']]).strip()
-        lat, lng = geocode(address)
+        lat, lng = geocode_address(address)
         zone = detect_zone(lat, lng) if lat and lng else None
         order = Order(order_number=order_number,
                       client_name=client_name,

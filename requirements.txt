@@ -2,3 +2,4 @@ Flask
 Flask-SQLAlchemy
 openpyxl
 Flask-Login
+requests

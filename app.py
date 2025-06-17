@@ -3,6 +3,7 @@ import csv
 import uuid
 import os
 import time
+import re
 from datetime import date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -556,18 +557,23 @@ def import_orders_finish():
 
     IGNORE_MARKERS = ('(optional)', '(opt)', '[optional]', '[opt]')
     col_map, skip_cols = {}, set()
+    optional_cols = []
     for idx, col_name in enumerate(header_row):
         if not col_name:
             continue
         lowered = col_name.lower()
         if any(m in lowered for m in IGNORE_MARKERS):
             skip_cols.add(idx)
+            cleaned = re.sub(r"\s*[\[\(]?\s*optional\s*[\]\)]?", "", col_name, flags=re.I).strip()
+            if cleaned:
+                optional_cols.append(cleaned)
             continue
         canonical = _normalize_header(lowered)
         col_map[idx] = canonical
 
     imported = 0
     errors = []
+    skipped_rows = []
 
     for row_num, row in enumerate(rows[1:], start=2):
         if all((not c or str(c).strip() == '') for c in row):
@@ -597,11 +603,19 @@ def import_orders_finish():
             imported += 1
         except Exception as exc:
             errors.append(f'Строка {row_num}: {exc}')
+            app.logger.error('Error importing row %s: %s', row_num, exc)
+            skipped_rows.append(row)
 
     print(f"[+] Импортировано строк: {imported} из {len(rows)}")
 
     db.session.commit()
     print(f"[✓] В базе добавлено заказов: {imported}")
+
+    if optional_cols:
+        flash('⚠ Пропущены необязательные поля: ' + ', '.join(optional_cols), 'warning')
+    if skipped_rows:
+        flash(f'❌ Пропущены {len(skipped_rows)} строки — из-за ошибок в данных. Подробности в логах.', 'warning')
+        app.logger.error('Skipped %s rows due to errors', len(skipped_rows))
 
     try:
         os.remove(path)

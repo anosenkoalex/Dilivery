@@ -576,19 +576,18 @@ def import_orders_finish():
     for row_num, row in enumerate(rows[1:], start=2):
         if all((not c or str(c).strip() == '') for c in row):
             continue
-        data = {}
-        for idx, field in col_map.items():
-            if idx >= len(row) or row[idx] == '' or row[idx] is None:
-                if idx in optional_indices:
-                    optional_skipped.add(optional_indices[idx])
-                    continue
-                if idx >= len(row):
-                    raise ValueError(f'Отсутствует поле {field}')
-                continue
-            value = row[idx]
-            data[field] = value.strip() if isinstance(value, str) else value
-
         try:
+            data = {}
+            for idx, field in col_map.items():
+                if idx >= len(row) or row[idx] == '' or row[idx] is None:
+                    if idx in optional_indices:
+                        optional_skipped.add(optional_indices[idx])
+                        data[field] = None
+                        continue
+                    raise ValueError(f'Отсутствует поле {field}')
+                value = row[idx]
+                data[field] = value.strip() if isinstance(value, str) else value
+
             if 'address' in data and data['address']:
                 lat, lon = geocode_address(data['address'])
                 data['latitude'] = lat

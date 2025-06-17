@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Импорт завершён</h1>
+<p>Импортировано заказов: {{ imported }}</p>
+
+{% if errors %}
+  <div class="alert alert-warning" role="alert">
+      <strong>Внимание!</strong> При импорте возникли ошибки:
+      <ul>
+         {% for err in errors %}
+            <li>{{ err }}</li>
+         {% endfor %}
+      </ul>
+  </div>
+{% endif %}
+
+<a class="btn btn-primary" href="{{ url_for('orders') }}">К списку заказов</a>
+{% endblock %}

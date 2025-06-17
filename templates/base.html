@@ -11,7 +11,10 @@
 <nav class="navbar navbar-expand-lg navbar-light bg-light mb-3">
   <div class="container-fluid">
     <a class="navbar-brand" href="#">CRM</a>
-    <div class="collapse navbar-collapse">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu" aria-controls="navbarMenu" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarMenu">
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         {% if current_user.is_authenticated %}
           <li class="nav-item"><a class="nav-link" href="{{ url_for('orders') }}">Заказы</a></li>
@@ -27,6 +30,8 @@
       {% if current_user.is_authenticated %}
         <span class="navbar-text me-3">{{ current_user.username }}</span>
         <a class="btn btn-outline-secondary" href="{{ url_for('logout') }}">Выход</a>
+      {% else %}
+        <a class="btn btn-outline-primary" href="{{ url_for('login') }}">Вход</a>
       {% endif %}
     </div>
   </div>

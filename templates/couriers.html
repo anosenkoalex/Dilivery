@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Курьеры</h2>
+<div class="table-responsive">
 <table class="table table-striped">
     <thead><tr><th>ID</th><th>Имя</th><th>Telegram</th><th>Зоны</th></tr></thead>
     <tbody>
@@ -9,4 +10,5 @@
     {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}

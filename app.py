@@ -8,14 +8,13 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Order, DeliveryZone, Courier, User
+from config import Config
 from sqlalchemy import func
 import openpyxl
 from io import BytesIO
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'database.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'secret'
+app.config.from_object(Config)
 
 db.init_app(app)
 
@@ -84,46 +83,60 @@ def geocode(address):
     return None, None
 
 
-def init_demo_data():
-    if Order.query.first() or User.query.first():
+def populate_demo_data():
+    """Populate database with demo zones, couriers and orders."""
+    if Order.query.first():
         return
-    # create demo zones
-    zone1 = DeliveryZone(name='Zone A', color='#ff0000', polygon_json=json.dumps([[37.6, 55.7], [37.7, 55.7], [37.7, 55.8], [37.6, 55.8]]))
-    zone2 = DeliveryZone(name='Zone B', color='#00ff00', polygon_json=json.dumps([[37.7, 55.7], [37.8, 55.7], [37.8, 55.8], [37.7, 55.8]]))
-    db.session.add_all([zone1, zone2])
-    db.session.commit()
-    couriers = [
-        Courier(name='Курьер 1', telegram='@courier1', zones='Zone A'),
-        Courier(name='Курьер 2', telegram='@courier2', zones='Zone B'),
-    ]
-    db.session.add_all(couriers)
-    db.session.commit()
-    # create orders
-    orders = [
-        Order(order_number='1001', client_name='Иван Иванов', phone='+70000000001', address='Москва', status='Складская обработка', latitude=55.75, longitude=37.65, note=''),
-        Order(order_number='1002', client_name='Петр Петров', phone='+70000000002', address='Москва', status='Складская обработка', latitude=55.75, longitude=37.75, note=''),
-        Order(order_number='1003', client_name='Сергей Сергеев', phone='+70000000003', address='Москва', status='Складская обработка', note=''),
-    ]
-    for o in orders:
-        if o.latitude and o.longitude:
-            zone = detect_zone(o.latitude, o.longitude)
-            o.zone = zone
-            c = assign_courier_for_zone(zone)
-            if c:
-                o.courier = c
-        db.session.add(o)
+
+    zones = []
+    for i in range(5):
+        polygon = [
+            [37.6 + i * 0.05, 55.7],
+            [37.65 + i * 0.05, 55.7],
+            [37.65 + i * 0.05, 55.75],
+            [37.6 + i * 0.05, 55.75],
+        ]
+        zone = DeliveryZone(
+            name=f"Zone {i + 1}",
+            color=f"#33{i}{i}ff" if i < 10 else "#3388ff",
+            polygon_json=json.dumps(polygon),
+        )
+        zones.append(zone)
+    db.session.add_all(zones)
     db.session.commit()
 
-    users = [
-        User(username='admin', password_hash=generate_password_hash('admin'), role='admin'),
-        User(username='courier1', password_hash=generate_password_hash('courier'), role='courier'),
-    ]
+    couriers = []
+    users = [User(username="admin", password_hash=generate_password_hash("admin"), role="admin")]
+    for i in range(5):
+        courier = Courier(name=f"Courier {i+1}", telegram=f"@courier{i+1}", zones=f"Zone {i+1}")
+        couriers.append(courier)
+        users.append(User(username=f"courier{i+1}", password_hash=generate_password_hash("courier"), role="courier"))
+    db.session.add_all(couriers)
     db.session.add_all(users)
+    db.session.commit()
+
+    orders = []
+    for i in range(20):
+        zone = zones[i % 5]
+        lat = 55.71 + (i % 5) * 0.01
+        lng = 37.61 + (i % 5) * 0.01
+        order = Order(
+            order_number=f"ORD{100 + i}",
+            client_name=f"Client {i+1}",
+            phone=f"+700000000{(i+1):02d}",
+            address=f"Demo address {i+1}",
+            latitude=lat,
+            longitude=lng,
+            zone=zone.name,
+            courier=couriers[i % 5],
+        )
+        orders.append(order)
+    db.session.add_all(orders)
     db.session.commit()
 
 with app.app_context():
     db.create_all()
-    init_demo_data()
+    populate_demo_data()
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -134,6 +147,7 @@ def login():
         user = User.query.filter_by(username=username).first()
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
+            flash('Вы вошли в систему', 'success')
             return redirect(url_for('orders'))
         flash('Неверные логин или пароль', 'warning')
     return render_template('login.html')
@@ -143,6 +157,7 @@ def login():
 @login_required
 def logout():
     logout_user()
+    flash('Вы вышли из системы', 'success')
     return redirect(url_for('login'))
 
 
@@ -380,12 +395,14 @@ def import_orders():
     if request.method == 'POST' and 'file' in request.files:
         file = request.files['file']
         if file.filename == '':
+            flash('Выберите файл', 'warning')
             return redirect(url_for('import_orders'))
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in ['.csv', '.xlsx']:
+            flash('Недопустимый формат файла', 'warning')
             return redirect(url_for('import_orders'))
         uid = str(uuid.uuid4()) + ext
-        upload_dir = os.path.join(app.root_path, 'uploads')
+        upload_dir = app.config['UPLOAD_FOLDER']
         os.makedirs(upload_dir, exist_ok=True)
         path = os.path.join(upload_dir, uid)
         file.save(path)
@@ -402,7 +419,7 @@ def import_orders_finish():
     file_id = request.form.get('file_id')
     if not file_id:
         return redirect(url_for('import_orders'))
-    path = os.path.join(app.root_path, 'uploads', file_id)
+    path = os.path.join(app.config['UPLOAD_FOLDER'], file_id)
     if not os.path.exists(path):
         return redirect(url_for('import_orders'))
     header = request.form.get('header') == 'on'
@@ -458,6 +475,7 @@ def import_orders_finish():
         imported += 1
     db.session.commit()
     os.remove(path)
+    flash(f'Импортировано заказов: {imported}', 'success')
     return render_template('import_result.html', count=imported)
 
 

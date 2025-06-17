@@ -4,6 +4,7 @@
 {% if current_user.role == 'admin' %}
 <a class="btn btn-sm btn-success mb-3" href="{{ url_for('import_orders') }}">Импорт заказов</a>
 {% endif %}
+<div class="table-responsive">
 <table class="table table-striped">
     <thead>
         <tr>
@@ -137,4 +138,5 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 {% endblock %}

@@ -139,6 +139,27 @@ def update_order(order_id):
     flash('Заказ обновлен', 'success')
     return redirect(url_for('orders'))
 
+@app.route('/orders/<int:order_id>/set_coords', methods=['GET', 'POST'])
+@login_required
+def set_coords(order_id):
+    order = Order.query.get_or_404(order_id)
+    if request.method == 'POST':
+        lat = request.form.get('latitude')
+        lng = request.form.get('longitude')
+        try:
+            lat = float(lat)
+            lng = float(lng)
+        except (TypeError, ValueError):
+            flash('Некорректные координаты', 'warning')
+            return redirect(url_for('set_coords', order_id=order_id))
+        order.latitude = lat
+        order.longitude = lng
+        order.zone = detect_zone(lat, lng)
+        db.session.commit()
+        flash('Координаты сохранены', 'success')
+        return redirect(url_for('orders'))
+    return render_template('set_coords.html', order=order)
+
 
 @app.route('/map')
 @login_required

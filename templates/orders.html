@@ -35,7 +35,7 @@
                     <button type="submit" class="btn btn-sm btn-primary">OK</button>
                 </form>
             </td>
-            <td>{% if o.latitude and o.longitude %}✔{% else %}✘{% endif %}</td>
+            <td>{% if o.latitude and o.longitude %}✔{% else %}✘ <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}</td>
             <td>{{ o.zone or '—' }}</td>
             <td>
                 <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ o.id }}">Редактировать</button>

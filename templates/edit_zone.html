@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Редактирование зоны {{ zone.name }}</h2>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Название</label>
+    <input type="text" class="form-control" name="name" value="{{ zone.name }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Цвет</label>
+    <input type="color" class="form-control form-control-color" id="colorInput" name="color" value="{{ zone.color }}">
+  </div>
+  <div id="map" style="height:400px;" class="mb-3"></div>
+  <input type="hidden" name="polygon" id="polygonInput">
+  <button type="submit" class="btn btn-primary">Сохранить</button>
+  <a href="{{ url_for('zones') }}" class="btn btn-secondary">Отмена</a>
+  <button id="resetBtn" class="btn btn-warning float-end">Очистить</button>
+</form>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+var polygonCoords = {{ zone.polygon_json|tojson }};
+var colorInput = document.getElementById('colorInput');
+var map = L.map('map').setView([polygonCoords[0][1], polygonCoords[0][0]], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+var poly = null;
+function updatePolygon(){
+    if(poly){map.removeLayer(poly);}
+    if(polygonCoords.length){
+        poly = L.polygon(polygonCoords.map(function(p){return [p[1],p[0]];}), {color: colorInput.value}).addTo(map);
+        map.fitBounds(poly.getBounds());
+    }
+    document.getElementById('polygonInput').value = JSON.stringify(polygonCoords);
+}
+map.on('click', function(e){
+    polygonCoords.push([e.latlng.lng, e.latlng.lat]);
+    updatePolygon();
+});
+document.getElementById('resetBtn').addEventListener('click', function(e){
+    e.preventDefault();
+    polygonCoords = [];
+    updatePolygon();
+});
+colorInput.addEventListener('change', updatePolygon);
+updatePolygon();
+</script>
+{% endblock %}

@@ -20,6 +20,8 @@ class Order(db.Model):
     delivered_at = db.Column(db.Date)
     comment = db.Column(db.Text)
     photo_filename = db.Column(db.String(128))
+    courier_id = db.Column(db.Integer, db.ForeignKey('couriers.id'))
+    courier = db.relationship('Courier', backref='orders')
 
 
 class DeliveryZone(db.Model):

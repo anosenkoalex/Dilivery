@@ -15,6 +15,7 @@
             <th>Статус</th>
             <th>Координаты</th>
             <th>Зона доставки</th>
+            <th>Курьер</th>
             <th>Комментарий / Фото</th>
             <th>Действия</th>
         </tr>
@@ -50,6 +51,7 @@
             </td>
             <td>{% if o.latitude and o.longitude %}✔{% else %}✘ <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}</td>
             <td>{{ o.zone or '—' }}</td>
+            <td>{{ o.courier.name if o.courier else '—' }}</td>
             <td>
                 {% if o.comment %}<div>{{ o.comment }}</div>{% endif %}
                 {% if o.photo_filename %}
@@ -111,6 +113,15 @@
                           <div class="mb-3">
                             <label class="form-label">Заметка</label>
                             <textarea class="form-control" name="note">{{ o.note or '' }}</textarea>
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Курьер</label>
+                            <select class="form-select" name="courier_id">
+                              <option value="">Авто</option>
+                              {% for c in couriers %}
+                              <option value="{{ c.id }}" {% if o.courier_id==c.id %}selected{% endif %}>{{ c.name }}</option>
+                              {% endfor %}
+                            </select>
                           </div>
                         </div>
                         <div class="modal-footer">

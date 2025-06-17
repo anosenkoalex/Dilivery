@@ -11,6 +11,7 @@ class Order(db.Model):
     client_name = db.Column(db.String(120), nullable=False)
     phone = db.Column(db.String(64))
     address = db.Column(db.String(256))
+    note = db.Column(db.Text)
     status = db.Column(db.String(64), default="Складская обработка")
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)

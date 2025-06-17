@@ -13,7 +13,7 @@
             <th>Статус</th>
             <th>Координаты</th>
             <th>Зона</th>
-            <th></th>
+            <th>Действия</th>
         </tr>
     </thead>
     <tbody>
@@ -37,6 +37,43 @@
             </td>
             <td>{% if o.latitude and o.longitude %}✔{% else %}✘{% endif %}</td>
             <td>{{ o.zone or '' }}</td>
+            <td>
+                <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ o.id }}">Редактировать</button>
+                <div class="modal fade" id="editModal{{ o.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <form method="post" action="{{ url_for('update_order', order_id=o.id) }}">
+                        <div class="modal-header">
+                          <h5 class="modal-title">Редактирование заказа {{ o.order_number }}</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <div class="mb-3">
+                            <label class="form-label">Имя клиента</label>
+                            <input type="text" class="form-control" name="client_name" value="{{ o.client_name }}">
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Телефон</label>
+                            <input type="text" class="form-control" name="phone" value="{{ o.phone }}">
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Адрес</label>
+                            <input type="text" class="form-control" name="address" value="{{ o.address }}">
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Заметка</label>
+                            <textarea class="form-control" name="note">{{ o.note or '' }}</textarea>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                          <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+            </td>
         </tr>
         {% endfor %}
     </tbody>

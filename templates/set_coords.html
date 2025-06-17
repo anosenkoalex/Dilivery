@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Установка координат для заказа {{ order.order_number }}</h2>
+<form method="post">
+  <div id="map" style="height:400px;" class="mb-3"></div>
+  <input type="hidden" name="latitude" id="latitude">
+  <input type="hidden" name="longitude" id="longitude">
+  <button type="submit" class="btn btn-primary" id="saveBtn" disabled>Сохранить</button>
+  <a href="{{ url_for('orders') }}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+var map = L.map('map').setView([55.75, 37.65], 11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
+var marker = null;
+function updateMarker(latlng) {
+    if (marker) {
+        map.removeLayer(marker);
+    }
+    marker = L.marker(latlng).addTo(map);
+    document.getElementById('latitude').value = latlng.lat;
+    document.getElementById('longitude').value = latlng.lng;
+    document.getElementById('saveBtn').disabled = false;
+}
+var initLat = {{ order.latitude or 'null' }};
+var initLng = {{ order.longitude or 'null' }};
+if (initLat && initLng) {
+    var latlng = L.latLng(initLat, initLng);
+    updateMarker(latlng);
+    map.setView(latlng, 13);
+}
+map.on('click', function(e){
+    updateMarker(e.latlng);
+});
+</script>
+{% endblock %}

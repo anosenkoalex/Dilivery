@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Импорт завершен</h2>
+<p>Импортировано заказов: {{ count }}</p>
+<a class="btn btn-primary" href="{{ url_for('orders') }}">К списку заказов</a>
+{% endblock %}

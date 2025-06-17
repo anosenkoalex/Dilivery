@@ -12,7 +12,7 @@
             <th>Адрес</th>
             <th>Статус</th>
             <th>Координаты</th>
-            <th>Зона</th>
+            <th>Зона доставки</th>
             <th>Действия</th>
         </tr>
     </thead>
@@ -36,7 +36,7 @@
                 </form>
             </td>
             <td>{% if o.latitude and o.longitude %}✔{% else %}✘{% endif %}</td>
-            <td>{{ o.zone or '' }}</td>
+            <td>{{ o.zone or '—' }}</td>
             <td>
                 <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ o.id }}">Редактировать</button>
                 <div class="modal fade" id="editModal{{ o.id }}" tabindex="-1" aria-hidden="true">

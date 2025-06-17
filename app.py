@@ -2,9 +2,11 @@ import json
 import csv
 import uuid
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, flash
+from datetime import date, timedelta
+from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from models import db, Order, DeliveryZone, Courier
 import openpyxl
+from io import BytesIO
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'database.db')
@@ -112,6 +114,10 @@ def orders():
         order = Order.query.get(order_id)
         if order:
             order.status = status
+            if status == 'Доставлен':
+                order.delivered_at = date.today()
+            else:
+                order.delivered_at = None
             db.session.commit()
             flash('Статус заказа обновлён', 'success')
         return redirect(url_for('orders'))
@@ -183,6 +189,51 @@ def zones():
 def couriers():
     couriers = Courier.query.all()
     return render_template('couriers.html', couriers=couriers)
+
+
+def _history_query(period):
+    q = Order.query.filter_by(status='Доставлен')
+    today = date.today()
+    if period == 'today':
+        start = today
+    elif period == '7':
+        start = today - timedelta(days=7)
+    elif period == 'month':
+        start = today - timedelta(days=30)
+    else:
+        start = None
+    if start:
+        q = q.filter(Order.delivered_at >= start)
+    return q
+
+
+@app.route('/history')
+@login_required
+def history():
+    period = request.args.get('period', 'today')
+    orders = _history_query(period).all()
+    return render_template('history.html', orders=orders, period=period)
+
+
+@app.route('/history/export')
+@login_required
+def export_history():
+    period = request.args.get('period', 'today')
+    orders = _history_query(period).all()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(['№ заказа', 'Имя', 'Телефон', 'Адрес', 'Дата', 'Зона'])
+    for o in orders:
+        dt = o.delivered_at.isoformat() if o.delivered_at else ''
+        ws.append([o.order_number, o.client_name, o.phone, o.address, dt, o.zone or ''])
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"dostavki_{date.today().isoformat()}.xlsx"
+    return send_file(buf, as_attachment=True, download_name=filename,
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 def read_file_rows(path):

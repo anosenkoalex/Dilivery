@@ -16,6 +16,7 @@ class Order(db.Model):
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)
     zone = db.Column(db.String(64))
+    delivered_at = db.Column(db.Date)
 
 
 class DeliveryZone(db.Model):

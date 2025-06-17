@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>История доставок</h2>
+<form method="get" class="mb-3 d-flex align-items-end">
+  <div class="me-2">
+    <label class="form-label">Период</label>
+    <select name="period" class="form-select">
+      <option value="today" {% if period=='today' %}selected{% endif %}>Сегодня</option>
+      <option value="7" {% if period=='7' %}selected{% endif %}>Последние 7 дней</option>
+      <option value="month" {% if period=='month' %}selected{% endif %}>Последний месяц</option>
+    </select>
+  </div>
+  <button type="submit" class="btn btn-primary me-2">Применить</button>
+  <a class="btn btn-success" href="{{ url_for('export_history', period=period) }}">Экспорт в Excel</a>
+</form>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>№</th>
+      <th>Клиент</th>
+      <th>Телефон</th>
+      <th>Адрес</th>
+      <th>Дата</th>
+      <th>Зона доставки</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for o in orders %}
+    <tr>
+      <td>{{ o.id }}</td>
+      <td>{{ o.order_number }}</td>
+      <td>{{ o.client_name }}</td>
+      <td>{{ o.phone }}</td>
+      <td>{{ o.address }}</td>
+      <td>{{ o.delivered_at or '' }}</td>
+      <td>{{ o.zone or '—' }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

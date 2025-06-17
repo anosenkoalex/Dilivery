@@ -315,29 +315,48 @@ def map_view():
             query = query.filter(Order.zone.in_(zones))
         else:
             query = query.filter(db.text('0=1'))
-    orders = [
+    orders = query.all()
+    orders_dict = [
         {
-            'id': o.id,
-            'order_number': o.order_number,
-            'client_name': o.client_name,
-            'address': o.address,
-            'phone': o.phone,
-            'latitude': o.latitude,
-            'longitude': o.longitude,
-            'zone': o.zone,
-            'status': o.status,
+            "id": o.id,
+            "address": o.address,
+            "lat": o.latitude,
+            "lng": o.longitude,
+            "zone": o.zone,
+            "status": o.status,
         }
-        for o in query.all()
+        for o in orders
     ]
+
     zones = DeliveryZone.query.all()
-    return render_template('map.html', orders=orders, zones=zones)
+    zones_dict = [
+        {
+            "id": z.id,
+            "name": z.name,
+            "color": z.color,
+            "polygon": json.loads(z.polygon_json),
+        }
+        for z in zones
+    ]
+
+    return render_template("map.html", orders=orders_dict, zones=zones_dict)
 
 
 @app.route('/zones')
 @admin_required
 def zones():
     zones = DeliveryZone.query.all()
-    return render_template('zones.html', zones=zones)
+    zones_dict = [
+        {
+            "id": z.id,
+            "name": z.name,
+            "color": z.color,
+            "polygon": json.loads(z.polygon_json),
+        }
+        for z in zones
+    ]
+
+    return render_template("zones.html", zones=zones_dict)
 
 
 @app.route('/zones/<int:zone_id>/edit', methods=['GET', 'POST'])

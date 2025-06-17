@@ -4,7 +4,7 @@ import uuid
 import os
 import time
 from datetime import date, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Order, DeliveryZone, Courier, User
@@ -486,6 +486,32 @@ def read_file_rows(path):
     return rows
 
 
+def _normalize_header(header: str) -> str:
+    """Collapse various header names to canonical Order field names."""
+    header = header.strip().lower()
+    mapping = {
+        'номер заказа': 'order_number',
+        'номер': 'order_number',
+        'order number': 'order_number',
+        'заказ': 'order_number',
+        'client name': 'client_name',
+        'имя клиента': 'client_name',
+        'клиент': 'client_name',
+        'имя': 'client_name',
+        'phone': 'phone',
+        'телефон': 'phone',
+        'тел': 'phone',
+        'address': 'address',
+        'адрес': 'address',
+        'zone': 'zone',
+        'зона': 'zone',
+        'comment': 'comment',
+        'комментарий': 'comment',
+        'note': 'note',
+    }
+    return mapping.get(header, header.replace(' ', '_'))
+
+
 @app.route('/orders/import', methods=['GET', 'POST'])
 @admin_required
 def import_orders():
@@ -521,82 +547,56 @@ def import_orders_finish():
     if not os.path.exists(path):
         return redirect(url_for('import_orders'))
 
-    header = request.form.get('header') == 'on'
-    mapping = {}
-    for field in ["order_number", "client_name", "phone", "address"]:
-        value = request.form.get(field)
-        mapping[field] = int(value) if value and value.isdigit() else None
-
     rows = read_file_rows(path)
-    if header:
-        rows = rows[1:]
-    print(f"[+] Загружено строк: {len(rows)}")
+    if not rows:
+        flash('Файл пуст', 'warning')
+        return redirect(url_for('import_orders'))
 
-    next_id = Order.query.count() + 1
+    header_row = [h.strip() if isinstance(h, str) else '' for h in rows[0]]
 
-    def next_order_number():
-        nonlocal next_id
-        num = f"ORD{next_id:03d}"
-        next_id += 1
-        return num
+    IGNORE_MARKERS = ('(optional)', '(opt)', '[optional]', '[opt]')
+    col_map, skip_cols = {}, set()
+    for idx, col_name in enumerate(header_row):
+        if not col_name:
+            continue
+        lowered = col_name.lower()
+        if any(m in lowered for m in IGNORE_MARKERS):
+            skip_cols.add(idx)
+            continue
+        canonical = _normalize_header(lowered)
+        col_map[idx] = canonical
 
     imported = 0
-    ni = mapping.get("order_number")
-    ci = mapping.get("client_name")
-    pi = mapping.get("phone")
-    ai = mapping.get("address")
+    errors = []
 
-    for idx, row in enumerate(rows, 1):
+    for row_num, row in enumerate(rows[1:], start=2):
+        if all((not c or str(c).strip() == '') for c in row):
+            continue
+        data = {}
+        for idx, value in enumerate(row):
+            if idx in skip_cols:
+                continue
+            field = col_map.get(idx)
+            if not field:
+                continue
+            data[field] = value.strip() if isinstance(value, str) else value
+
         try:
-            # отладочный лог
-            print(f"[{idx}] Строка: {row}")
-
-            if ci is None or ai is None:
-                print("[!] Не задан индекс имени клиента или адреса, прерываем импорт")
-                break
-            if ci >= len(row) or ai >= len(row):
-                print(f"[!] Недостаточно колонок в строке {idx}")
-                continue
-
-            client_name = str(row[ci]).strip()
-            address = str(row[ai]).strip()
-            if not client_name or client_name.lower() == 'none' or not address or address.lower() == 'none':
-                print(f"[!] Пропуск строки {idx} из-за пустого имени или адреса")
-                continue
-
-            if ni is not None and ni < len(row):
-                order_number = str(row[ni]).strip()
-            else:
-                order_number = ""
-            order_number = order_number or next_order_number()
-
-            phone = ""
-            if pi is not None and pi < len(row):
-                phone = str(row[pi]).strip()
-
-            lat, lon = geocode_address(address)
-            zone = detect_zone(lat, lon) if lat and lon else None
-            order = Order(
-                order_number=order_number,
-                client_name=client_name,
-                phone=phone,
-                address=address,
-                latitude=lat,
-                longitude=lon,
-                zone=zone,
-            )
-
-            if zone:
-                courier = assign_courier_for_zone(zone)
+            if 'address' in data and data['address']:
+                lat, lon = geocode_address(data['address'])
+                data['latitude'] = lat
+                data['longitude'] = lon
+                data['zone'] = detect_zone(lat, lon) if lat and lon else None
+            order = Order(**data)
+            if order.zone:
+                courier = assign_courier_for_zone(order.zone)
                 if courier:
                     order.courier = courier
 
             db.session.add(order)
             imported += 1
-            print(f"[+] Импортирована строка: {order_number}")
-        except Exception as e:
-            print(f"[!] Ошибка при импорте строки {idx}: {row}")
-            print(f"    → {type(e).__name__}: {e}")
+        except Exception as exc:
+            errors.append(f'Строка {row_num}: {exc}')
 
     print(f"[+] Импортировано строк: {imported} из {len(rows)}")
 
@@ -613,7 +613,7 @@ def import_orders_finish():
             print(f"[!] Ошибка удаления файла: {e}")
 
     flash(f'Импортировано заказов: {imported}', 'success')
-    return render_template('import_result.html', count=imported)
+    return render_template('import_finish.html', imported=imported, errors=errors)
 
 
 @app.route('/stats')

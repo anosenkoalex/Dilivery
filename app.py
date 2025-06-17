@@ -66,6 +66,19 @@ def detect_zone(lat, lng):
     return None
 
 
+def assign_courier_for_zone(zone_name):
+    """Return Courier instance serving the given zone name."""
+    if not zone_name:
+        return None
+    couriers = Courier.query.all()
+    for c in couriers:
+        if c.zones:
+            zones = [z.strip() for z in c.zones.split(',') if z.strip()]
+            if zone_name in zones:
+                return c
+    return None
+
+
 def geocode(address):
     """Placeholder geocoder returning None coordinates."""
     return None, None
@@ -79,6 +92,12 @@ def init_demo_data():
     zone2 = DeliveryZone(name='Zone B', color='#00ff00', polygon_json=json.dumps([[37.7, 55.7], [37.8, 55.7], [37.8, 55.8], [37.7, 55.8]]))
     db.session.add_all([zone1, zone2])
     db.session.commit()
+    couriers = [
+        Courier(name='Курьер 1', telegram='@courier1', zones='Zone A'),
+        Courier(name='Курьер 2', telegram='@courier2', zones='Zone B'),
+    ]
+    db.session.add_all(couriers)
+    db.session.commit()
     # create orders
     orders = [
         Order(order_number='1001', client_name='Иван Иванов', phone='+70000000001', address='Москва', status='Складская обработка', latitude=55.75, longitude=37.65, note=''),
@@ -89,13 +108,10 @@ def init_demo_data():
         if o.latitude and o.longitude:
             zone = detect_zone(o.latitude, o.longitude)
             o.zone = zone
+            c = assign_courier_for_zone(zone)
+            if c:
+                o.courier = c
         db.session.add(o)
-    db.session.commit()
-    couriers = [
-        Courier(name='Курьер 1', telegram='@courier1', zones='Zone A'),
-        Courier(name='Курьер 2', telegram='@courier2', zones='Zone B'),
-    ]
-    db.session.add_all(couriers)
     db.session.commit()
 
     users = [
@@ -157,7 +173,8 @@ def orders():
         else:
             query = query.filter(db.text('0=1'))
     orders = query.all()
-    return render_template('orders.html', orders=orders)
+    couriers_list = Courier.query.all()
+    return render_template('orders.html', orders=orders, couriers=couriers_list)
 
 
 @app.route('/orders/<int:order_id>/update', methods=['POST'])
@@ -178,6 +195,15 @@ def update_order(order_id):
         else:
             order.zone = None
             flash('Не удалось определить координаты по адресу', 'warning')
+    courier_val = request.form.get('courier_id')
+    if courier_val:
+        try:
+            order.courier_id = int(courier_val)
+        except ValueError:
+            order.courier_id = None
+    elif order.zone:
+        c = assign_courier_for_zone(order.zone)
+        order.courier = c
     db.session.commit()
     flash('Заказ обновлен', 'success')
     return redirect(url_for('orders'))
@@ -198,6 +224,8 @@ def set_coords(order_id):
         order.latitude = lat
         order.longitude = lng
         order.zone = detect_zone(lat, lng)
+        c = assign_courier_for_zone(order.zone)
+        order.courier = c
         db.session.commit()
         flash('Координаты сохранены', 'success')
         return redirect(url_for('orders'))
@@ -253,6 +281,33 @@ def map_view():
 def zones():
     zones = DeliveryZone.query.all()
     return render_template('zones.html', zones=zones)
+
+
+@app.route('/zones/<int:zone_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_zone(zone_id):
+    zone = DeliveryZone.query.get_or_404(zone_id)
+    if request.method == 'POST':
+        zone.name = request.form.get('name', zone.name)
+        zone.color = request.form.get('color', zone.color)
+        polygon = request.form.get('polygon')
+        if polygon:
+            zone.polygon_json = polygon
+        db.session.commit()
+        flash('Зона обновлена', 'success')
+        return redirect(url_for('zones'))
+    return render_template('edit_zone.html', zone=zone)
+
+
+@app.route('/zones/<int:zone_id>/delete')
+@admin_required
+def delete_zone(zone_id):
+    zone = DeliveryZone.query.get_or_404(zone_id)
+    Order.query.filter_by(zone=zone.name).update({'zone': None, 'courier_id': None})
+    db.session.delete(zone)
+    db.session.commit()
+    flash('Зона удалена', 'success')
+    return redirect(url_for('zones'))
 
 
 @app.route('/couriers')
@@ -395,6 +450,10 @@ def import_orders_finish():
                       latitude=lat,
                       longitude=lng,
                       zone=zone)
+        if zone:
+            c = assign_courier_for_zone(zone)
+            if c:
+                order.courier = c
         db.session.add(order)
         imported += 1
     db.session.commit()

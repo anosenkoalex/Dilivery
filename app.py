@@ -540,48 +540,60 @@ def import_orders_finish():
         return num
 
     imported = 0
-    for row in rows:
-        ci = mapping.get("client_name")
-        ai = mapping.get("address")
-        if ci is None or ai is None:
-            break
-        if ci >= len(row) or ai >= len(row):
-            continue
+    ni = mapping.get("order_number")
+    ci = mapping.get("client_name")
+    pi = mapping.get("phone")
+    ai = mapping.get("address")
 
-        client_name = str(row[ci]).strip()
-        address = str(row[ai]).strip()
-        if not client_name or not address:
-            continue
+    for idx, row in enumerate(rows, 1):
+        try:
+            # отладочный лог
+            print(f"[{idx}] Строка: {row}")
 
-        if mapping["order_number"] is not None and mapping["order_number"] < len(row):
-            order_number = str(row[mapping["order_number"]]).strip()
-        else:
-            order_number = ""
-        order_number = order_number or next_order_number()
+            if ci is None or ai is None:
+                break
+            if ci >= len(row) or ai >= len(row):
+                continue
 
-        phone = ""
-        if mapping["phone"] is not None and mapping["phone"] < len(row):
-            phone = str(row[mapping["phone"]]).strip()
+            client_name = str(row[ci]).strip()
+            address = str(row[ai]).strip()
+            if not client_name or not address:
+                continue
 
-        lat, lon = geocode_address(address)
-        zone = detect_zone(lat, lon) if lat and lon else None
-        order = Order(
-            order_number=order_number,
-            client_name=client_name,
-            phone=phone,
-            address=address,
-            latitude=lat,
-            longitude=lon,
-            zone=zone,
-        )
+            if ni is not None and ni < len(row):
+                order_number = str(row[ni]).strip()
+            else:
+                order_number = ""
+            order_number = order_number or next_order_number()
 
-        if zone:
-            courier = assign_courier_for_zone(zone)
-            if courier:
-                order.courier = courier
+            phone = ""
+            if pi is not None and pi < len(row):
+                phone = str(row[pi]).strip()
 
-        db.session.add(order)
-        imported += 1
+            lat, lon = geocode_address(address)
+            zone = detect_zone(lat, lon) if lat and lon else None
+            order = Order(
+                order_number=order_number,
+                client_name=client_name,
+                phone=phone,
+                address=address,
+                latitude=lat,
+                longitude=lon,
+                zone=zone,
+            )
+
+            if zone:
+                courier = assign_courier_for_zone(zone)
+                if courier:
+                    order.courier = courier
+
+            db.session.add(order)
+            imported += 1
+        except Exception as e:
+            print(f"[!] Ошибка при импорте строки {idx}: {row}")
+            print(f"    → {type(e).__name__}: {e}")
+
+    print(f"[+] Импортировано строк: {imported} из {len(rows)}")
 
     db.session.commit()
 

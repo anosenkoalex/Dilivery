@@ -530,6 +530,7 @@ def import_orders_finish():
     rows = read_file_rows(path)
     if header:
         rows = rows[1:]
+    print(f"[+] Загружено строк: {len(rows)}")
 
     next_id = Order.query.count() + 1
 
@@ -551,13 +552,16 @@ def import_orders_finish():
             print(f"[{idx}] Строка: {row}")
 
             if ci is None or ai is None:
+                print("[!] Не задан индекс имени клиента или адреса, прерываем импорт")
                 break
             if ci >= len(row) or ai >= len(row):
+                print(f"[!] Недостаточно колонок в строке {idx}")
                 continue
 
             client_name = str(row[ci]).strip()
             address = str(row[ai]).strip()
-            if not client_name or not address:
+            if not client_name or client_name.lower() == 'none' or not address or address.lower() == 'none':
+                print(f"[!] Пропуск строки {idx} из-за пустого имени или адреса")
                 continue
 
             if ni is not None and ni < len(row):
@@ -589,6 +593,7 @@ def import_orders_finish():
 
             db.session.add(order)
             imported += 1
+            print(f"[+] Импортирована строка: {order_number}")
         except Exception as e:
             print(f"[!] Ошибка при импорте строки {idx}: {row}")
             print(f"    → {type(e).__name__}: {e}")
@@ -596,6 +601,7 @@ def import_orders_finish():
     print(f"[+] Импортировано строк: {imported} из {len(rows)}")
 
     db.session.commit()
+    print(f"[✓] В базе добавлено заказов: {imported}")
 
     try:
         os.remove(path)

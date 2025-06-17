@@ -25,15 +25,25 @@
             <td>{{ o.phone }}</td>
             <td>{{ o.address }}</td>
             <td>
-                <form method="post" class="d-flex">
-                    <input type="hidden" name="id" value="{{ o.id }}">
-                    <select name="status" class="form-select form-select-sm me-2">
-                        {% for st in ['Складская обработка','В пути','Доставлен'] %}
-                        <option value="{{ st }}" {% if o.status==st %}selected{% endif %}>{{ st }}</option>
-                        {% endfor %}
-                    </select>
-                    <button type="submit" class="btn btn-sm btn-primary">OK</button>
-                </form>
+                {% set status_class = {
+                    'Складская обработка': 'bg-secondary',
+                    'Подготовлен к доставке': 'bg-info',
+                    'Выдан': 'bg-warning',
+                    'Доставлен': 'bg-success'
+                } %}
+                <span class="badge {{ status_class.get(o.status, 'bg-secondary') }}">{{ o.status }}</span>
+                <button class="btn btn-sm btn-link p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#statusForm{{ o.id }}">Изменить</button>
+                <div class="collapse mt-1" id="statusForm{{ o.id }}">
+                    <form method="post" class="d-flex">
+                        <input type="hidden" name="id" value="{{ o.id }}">
+                        <select name="status" class="form-select form-select-sm me-2">
+                            {% for st in ['Складская обработка', 'Подготовлен к доставке', 'Выдан', 'Доставлен'] %}
+                            <option value="{{ st }}" {% if o.status==st %}selected{% endif %}>{{ st }}</option>
+                            {% endfor %}
+                        </select>
+                        <button type="submit" class="btn btn-sm btn-primary">OK</button>
+                    </form>
+                </div>
             </td>
             <td>{% if o.latitude and o.longitude %}✔{% else %}✘ <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}</td>
             <td>{{ o.zone or '—' }}</td>

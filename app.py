@@ -3,8 +3,10 @@ import csv
 import uuid
 import os
 from datetime import date, timedelta
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file, jsonify
-from models import db, Order, DeliveryZone, Courier
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
+from models import db, Order, DeliveryZone, Courier, User
 from sqlalchemy import func
 import openpyxl
 from io import BytesIO
@@ -15,6 +17,27 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'secret'
 
 db.init_app(app)
+
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+def admin_required(func):
+    from functools import wraps
+
+    @wraps(func)
+    @login_required
+    def wrapper(*args, **kwargs):
+        if current_user.role != 'admin':
+            return redirect(url_for('orders'))
+        return func(*args, **kwargs)
+
+    return wrapper
 
 
 def point_in_polygon(x, y, polygon):
@@ -48,7 +71,7 @@ def geocode(address):
 
 
 def init_demo_data():
-    if Order.query.first():
+    if Order.query.first() or User.query.first():
         return
     # create demo zones
     zone1 = DeliveryZone(name='Zone A', color='#ff0000', polygon_json=json.dumps([[37.6, 55.7], [37.7, 55.7], [37.7, 55.8], [37.6, 55.8]]))
@@ -74,35 +97,35 @@ def init_demo_data():
     db.session.add_all(couriers)
     db.session.commit()
 
+    users = [
+        User(username='admin', password_hash=generate_password_hash('admin'), role='admin'),
+        User(username='courier1', password_hash=generate_password_hash('courier'), role='courier'),
+    ]
+    db.session.add_all(users)
+    db.session.commit()
+
 with app.app_context():
     db.create_all()
     init_demo_data()
 
 
-def login_required(func):
-    from functools import wraps
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if 'user' not in session:
-            return redirect(url_for('login'))
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        if request.form['username'] == 'admin' and request.form['password'] == 'password':
-            session['user'] = 'admin'
+        username = request.form['username']
+        password = request.form['password']
+        user = User.query.filter_by(username=username).first()
+        if user and check_password_hash(user.password_hash, password):
+            login_user(user)
             return redirect(url_for('orders'))
+        flash('Неверные логин или пароль', 'warning')
     return render_template('login.html')
 
 
 @app.route('/logout')
+@login_required
 def logout():
-    session.pop('user', None)
+    logout_user()
     return redirect(url_for('login'))
 
 
@@ -122,7 +145,17 @@ def orders():
             db.session.commit()
             flash('Статус заказа обновлён', 'success')
         return redirect(url_for('orders'))
-    orders = Order.query.all()
+    query = Order.query
+    if current_user.role == 'courier':
+        courier = Courier.query.filter_by(telegram=f'@{current_user.username}').first()
+        zones = []
+        if courier and courier.zones:
+            zones = [z.strip() for z in courier.zones.split(',') if z.strip()]
+        if zones:
+            query = query.filter(Order.zone.in_(zones))
+        else:
+            query = query.filter(db.text('0=1'))
+    orders = query.all()
     return render_template('orders.html', orders=orders)
 
 
@@ -173,20 +206,30 @@ def set_coords(order_id):
 @app.route('/map')
 @login_required
 def map_view():
-    orders = Order.query.all()
+    query = Order.query
+    if current_user.role == 'courier':
+        courier = Courier.query.filter_by(telegram=f'@{current_user.username}').first()
+        zones = []
+        if courier and courier.zones:
+            zones = [z.strip() for z in courier.zones.split(',') if z.strip()]
+        if zones:
+            query = query.filter(Order.zone.in_(zones))
+        else:
+            query = query.filter(db.text('0=1'))
+    orders = query.all()
     zones = DeliveryZone.query.all()
     return render_template('map.html', orders=orders, zones=zones)
 
 
 @app.route('/zones')
-@login_required
+@admin_required
 def zones():
     zones = DeliveryZone.query.all()
     return render_template('zones.html', zones=zones)
 
 
 @app.route('/couriers')
-@login_required
+@admin_required
 def couriers():
     couriers = Courier.query.all()
     return render_template('couriers.html', couriers=couriers)
@@ -209,7 +252,7 @@ def _history_query(period):
 
 
 @app.route('/history')
-@login_required
+@admin_required
 def history():
     period = request.args.get('period', 'today')
     orders = _history_query(period).all()
@@ -217,7 +260,7 @@ def history():
 
 
 @app.route('/history/export')
-@login_required
+@admin_required
 def export_history():
     period = request.args.get('period', 'today')
     orders = _history_query(period).all()
@@ -250,7 +293,7 @@ def read_file_rows(path):
 
 
 @app.route('/orders/import', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def import_orders():
     if request.method == 'POST' and 'file' in request.files:
         file = request.files['file']
@@ -272,7 +315,7 @@ def import_orders():
 
 
 @app.route('/orders/import/finish', methods=['POST'])
-@login_required
+@admin_required
 def import_orders_finish():
     file_id = request.form.get('file_id')
     if not file_id:
@@ -333,7 +376,7 @@ def import_orders_finish():
 
 
 @app.route('/stats')
-@login_required
+@admin_required
 def stats():
     zones = DeliveryZone.query.all()
     couriers = Courier.query.all()
@@ -341,7 +384,7 @@ def stats():
 
 
 @app.route('/stats/data')
-@login_required
+@admin_required
 def stats_data():
     period = request.args.get('period', 'today')
     zone = request.args.get('zone')

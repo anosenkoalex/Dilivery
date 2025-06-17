@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 
 
 db = SQLAlchemy()
@@ -33,3 +34,11 @@ class Courier(db.Model):
     name = db.Column(db.String(64), nullable=False)
     telegram = db.Column(db.String(64))
     zones = db.Column(db.String(256))
+
+
+class User(db.Model, UserMixin):
+    __tablename__ = "users"
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(64), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+    role = db.Column(db.String(16), nullable=False)

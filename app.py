@@ -2,6 +2,7 @@ import json
 import csv
 import uuid
 import os
+import time
 from datetime import date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -201,6 +202,32 @@ def set_coords(order_id):
         flash('Координаты сохранены', 'success')
         return redirect(url_for('orders'))
     return render_template('set_coords.html', order=order)
+
+
+@app.route('/orders/<int:order_id>/add_comment_photo', methods=['POST'])
+@login_required
+def add_comment_photo(order_id):
+    if current_user.role != 'courier':
+        return redirect(url_for('orders'))
+    order = Order.query.get_or_404(order_id)
+    comment = request.form.get('comment', '').strip()
+    file = request.files.get('photo')
+    if file and file.filename:
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ['.jpg', '.jpeg', '.png']:
+            flash('Допустимы только файлы JPG и PNG', 'warning')
+            return redirect(url_for('orders'))
+        upload_dir = os.path.join(app.static_folder, 'uploads')
+        os.makedirs(upload_dir, exist_ok=True)
+        filename = f"order_{order_id}_{int(time.time())}.jpg"
+        path = os.path.join(upload_dir, filename)
+        file.save(path)
+        order.photo_filename = filename
+    if comment:
+        order.comment = comment
+    db.session.commit()
+    flash('Комментарий сохранен', 'success')
+    return redirect(url_for('orders'))
 
 
 @app.route('/map')

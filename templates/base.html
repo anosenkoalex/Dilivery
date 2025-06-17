@@ -13,15 +13,19 @@
     <a class="navbar-brand" href="#">CRM</a>
     <div class="collapse navbar-collapse">
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('orders') }}">Заказы</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('map_view') }}">Карта</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('zones') }}">Зоны</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('couriers') }}">Курьеры</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('history') }}">История</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('stats') }}">Статистика</a></li>
+        {% if current_user.is_authenticated %}
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('orders') }}">Заказы</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('map_view') }}">Карта</a></li>
+          {% if current_user.role == 'admin' %}
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('zones') }}">Зоны</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('couriers') }}">Курьеры</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('history') }}">История</a></li>
+            <li class="nav-item"><a class="nav-link" href="{{ url_for('stats') }}">Статистика</a></li>
+          {% endif %}
+        {% endif %}
       </ul>
-      {% if session.get('user') %}
-        <span class="navbar-text me-3">{{ session['user'] }}</span>
+      {% if current_user.is_authenticated %}
+        <span class="navbar-text me-3">{{ current_user.username }}</span>
         <a class="btn btn-outline-secondary" href="{{ url_for('logout') }}">Выход</a>
       {% endif %}
     </div>

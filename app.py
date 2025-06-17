@@ -134,6 +134,14 @@ with app.app_context():
     populate_demo_data()
 
 
+@app.route('/')
+def index():
+    if current_user.is_authenticated:
+        return redirect(url_for('orders'))
+    else:
+        return redirect(url_for('login'))
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':

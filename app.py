@@ -497,61 +497,75 @@ def import_orders_finish():
     file_id = request.form.get('file_id')
     if not file_id:
         return redirect(url_for('import_orders'))
+
     path = os.path.join(app.config['UPLOAD_FOLDER'], file_id)
     if not os.path.exists(path):
         return redirect(url_for('import_orders'))
+
     header = request.form.get('header') == 'on'
     mapping = {}
-    for field in ['order_number', 'client_name', 'phone', 'address']:
-        val = request.form.get(field)
-        mapping[field] = int(val) if val and val.isdigit() else None
+    for field in ["order_number", "client_name", "phone", "address"]:
+        value = request.form.get(field)
+        mapping[field] = int(value) if value and value.isdigit() else None
+
     rows = read_file_rows(path)
     if header:
         rows = rows[1:]
-    counter = Order.query.count() + 1
 
-    def gen_order():
-        nonlocal counter
-        num = f"ORD{counter:03d}"
-        counter += 1
+    next_id = Order.query.count() + 1
+
+    def next_order_number():
+        nonlocal next_id
+        num = f"ORD{next_id:03d}"
+        next_id += 1
         return num
 
     imported = 0
-    for r in rows:
-        client_idx = mapping['client_name']
-        addr_idx = mapping['address']
-        if client_idx is None or addr_idx is None:
+    for row in rows:
+        ci = mapping.get("client_name")
+        ai = mapping.get("address")
+        if ci is None or ai is None:
             break
-        if client_idx >= len(r) or addr_idx >= len(r):
+        if ci >= len(row) or ai >= len(row):
             continue
-        client_name = str(r[client_idx]).strip()
-        address = str(r[addr_idx]).strip()
+
+        client_name = str(row[ci]).strip()
+        address = str(row[ai]).strip()
         if not client_name or not address:
             continue
-        if mapping['order_number'] is not None and mapping['order_number'] < len(r):
-            onum = str(r[mapping['order_number']]).strip()
+
+        if mapping["order_number"] is not None and mapping["order_number"] < len(row):
+            order_number = str(row[mapping["order_number"]]).strip()
         else:
-            onum = ''
-        order_number = onum if onum else gen_order()
-        phone = ''
-        if mapping['phone'] is not None and mapping['phone'] < len(r):
-            phone = str(r[mapping['phone']]).strip()
-        lat, lng = geocode_address(address)
-        zone = detect_zone(lat, lng) if lat and lng else None
-        order = Order(order_number=order_number,
-                      client_name=client_name,
-                      phone=phone,
-                      address=address,
-                      latitude=lat,
-                      longitude=lng,
-                      zone=zone)
+            order_number = ""
+        order_number = order_number or next_order_number()
+
+        phone = ""
+        if mapping["phone"] is not None and mapping["phone"] < len(row):
+            phone = str(row[mapping["phone"]]).strip()
+
+        lat, lon = geocode_address(address)
+        zone = detect_zone(lat, lon) if lat and lon else None
+        order = Order(
+            order_number=order_number,
+            client_name=client_name,
+            phone=phone,
+            address=address,
+            latitude=lat,
+            longitude=lon,
+            zone=zone,
+        )
+
         if zone:
-            c = assign_courier_for_zone(zone)
-            if c:
-                order.courier = c
+            courier = assign_courier_for_zone(zone)
+            if courier:
+                order.courier = courier
+
         db.session.add(order)
         imported += 1
+
     db.session.commit()
+
     try:
         os.remove(path)
     except PermissionError:
@@ -560,6 +574,7 @@ def import_orders_finish():
             os.remove(path)
         except Exception as e:
             print(f"[!] Ошибка удаления файла: {e}")
+
     flash(f'Импортировано заказов: {imported}', 'success')
     return render_template('import_result.html', count=imported)
 

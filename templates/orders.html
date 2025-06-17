@@ -15,6 +15,7 @@
             <th>Статус</th>
             <th>Координаты</th>
             <th>Зона доставки</th>
+            <th>Комментарий / Фото</th>
             <th>Действия</th>
         </tr>
     </thead>
@@ -49,6 +50,41 @@
             </td>
             <td>{% if o.latitude and o.longitude %}✔{% else %}✘ <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}</td>
             <td>{{ o.zone or '—' }}</td>
+            <td>
+                {% if o.comment %}<div>{{ o.comment }}</div>{% endif %}
+                {% if o.photo_filename %}
+                <a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>
+                {% endif %}
+                {% if current_user.role == 'courier' %}
+                <button class="btn btn-sm btn-link p-0 ms-2" type="button" data-bs-toggle="modal" data-bs-target="#commentModal{{ o.id }}">Добавить фото / комментарий</button>
+                <div class="modal fade" id="commentModal{{ o.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <form method="post" action="{{ url_for('add_comment_photo', order_id=o.id) }}" enctype="multipart/form-data">
+                        <div class="modal-header">
+                          <h5 class="modal-title">Комментарий для заказа {{ o.order_number }}</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <div class="mb-3">
+                            <label class="form-label">Комментарий</label>
+                            <textarea class="form-control" name="comment"></textarea>
+                          </div>
+                          <div class="mb-3">
+                            <label class="form-label">Фото</label>
+                            <input type="file" class="form-control" name="photo" accept="image/jpeg,image/png">
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                          <button type="submit" class="btn btn-primary">Сохранить</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+                {% endif %}
+            </td>
             <td>
                 <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ o.id }}">Редактировать</button>
                 <div class="modal fade" id="editModal{{ o.id }}" tabindex="-1" aria-hidden="true">

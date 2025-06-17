@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Delivery CRM</title>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light mb-3">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">CRM</a>
+    <div class="collapse navbar-collapse">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('orders') }}">Заказы</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('map_view') }}">Карта</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('zones') }}">Зоны</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('couriers') }}">Курьеры</a></li>
+      </ul>
+      {% if session.get('user') %}
+        <span class="navbar-text me-3">{{ session['user'] }}</span>
+        <a class="btn btn-outline-secondary" href="{{ url_for('logout') }}">Выход</a>
+      {% endif %}
+    </div>
+  </div>
+</nav>
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='scripts.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

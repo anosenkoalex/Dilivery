@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Заказы</h2>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>№</th>
+            <th>Клиент</th>
+            <th>Телефон</th>
+            <th>Адрес</th>
+            <th>Статус</th>
+            <th>Координаты</th>
+            <th>Зона</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for o in orders %}
+        <tr>
+            <td>{{ o.id }}</td>
+            <td>{{ o.order_number }}</td>
+            <td>{{ o.client_name }}</td>
+            <td>{{ o.phone }}</td>
+            <td>{{ o.address }}</td>
+            <td>
+                <form method="post" class="d-flex">
+                    <input type="hidden" name="id" value="{{ o.id }}">
+                    <select name="status" class="form-select form-select-sm me-2">
+                        {% for st in ['Складская обработка','В пути','Доставлен'] %}
+                        <option value="{{ st }}" {% if o.status==st %}selected{% endif %}>{{ st }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-primary">OK</button>
+                </form>
+            </td>
+            <td>{% if o.latitude and o.longitude %}✔{% else %}✘{% endif %}</td>
+            <td>{{ o.zone or '' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

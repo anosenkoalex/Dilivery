@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Зоны доставки</h2>
+<table class="table table-striped mb-3">
+    <thead>
+        <tr><th>ID</th><th>Название</th><th>Цвет</th></tr>
+    </thead>
+    <tbody>
+    {% for z in zones %}
+    <tr><td>{{ z.id }}</td><td>{{ z.name }}</td><td><span style="background:{{ z.color }};padding:2px 10px;display:inline-block;"></span> {{ z.color }}</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+<div id="map" style="height:400px;"></div>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script>
+initMap([], {{ zones|tojson }});
+</script>
+{% endblock %}

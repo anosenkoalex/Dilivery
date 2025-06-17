@@ -2,7 +2,7 @@ import json
 import csv
 import uuid
 import os
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, flash
 from models import db, Order, DeliveryZone, Courier
 import openpyxl
 
@@ -54,9 +54,9 @@ def init_demo_data():
     db.session.commit()
     # create orders
     orders = [
-        Order(order_number='1001', client_name='Иван Иванов', phone='+70000000001', address='Москва', status='Складская обработка', latitude=55.75, longitude=37.65),
-        Order(order_number='1002', client_name='Петр Петров', phone='+70000000002', address='Москва', status='Складская обработка', latitude=55.75, longitude=37.75),
-        Order(order_number='1003', client_name='Сергей Сергеев', phone='+70000000003', address='Москва', status='Складская обработка'),
+        Order(order_number='1001', client_name='Иван Иванов', phone='+70000000001', address='Москва', status='Складская обработка', latitude=55.75, longitude=37.65, note=''),
+        Order(order_number='1002', client_name='Петр Петров', phone='+70000000002', address='Москва', status='Складская обработка', latitude=55.75, longitude=37.75, note=''),
+        Order(order_number='1003', client_name='Сергей Сергеев', phone='+70000000003', address='Москва', status='Складская обработка', note=''),
     ]
     for o in orders:
         if o.latitude and o.longitude:
@@ -115,6 +115,29 @@ def orders():
             db.session.commit()
     orders = Order.query.all()
     return render_template('orders.html', orders=orders)
+
+
+@app.route('/orders/<int:order_id>/update', methods=['POST'])
+@login_required
+def update_order(order_id):
+    order = Order.query.get_or_404(order_id)
+    old_address = order.address
+    order.client_name = request.form.get('client_name', order.client_name)
+    order.phone = request.form.get('phone', order.phone)
+    order.address = request.form.get('address', order.address)
+    order.note = request.form.get('note', order.note)
+    if order.address != old_address:
+        lat, lng = geocode(order.address)
+        order.latitude = lat
+        order.longitude = lng
+        if lat and lng:
+            order.zone = detect_zone(lat, lng)
+        else:
+            order.zone = None
+            flash('Не удалось определить координаты по адресу', 'warning')
+    db.session.commit()
+    flash('Заказ обновлен', 'success')
+    return redirect(url_for('orders'))
 
 
 @app.route('/map')

@@ -191,8 +191,12 @@ def orders():
         else:
             query = query.filter(db.text('0=1'))
     orders = query.all()
+    orders_by_zone = {}
+    for o in orders:
+        key = o.zone or 'Не определена'
+        orders_by_zone.setdefault(key, []).append(o)
     couriers_list = Courier.query.all()
-    return render_template('orders.html', orders=orders, couriers=couriers_list)
+    return render_template('orders.html', orders=orders, orders_by_zone=orders_by_zone, couriers=couriers_list)
 
 
 @app.route('/orders/<int:order_id>/update', methods=['POST'])
@@ -248,6 +252,28 @@ def set_coords(order_id):
         flash('Координаты сохранены', 'success')
         return redirect(url_for('orders'))
     return render_template('set_coords.html', order=order)
+
+
+@app.route('/orders/set_point', methods=['POST'])
+@login_required
+def set_point():
+    order_id = request.form.get('order_id')
+    lat = request.form.get('lat')
+    lon = request.form.get('lon')
+    try:
+        order_id = int(order_id)
+        lat = float(lat)
+        lon = float(lon)
+    except (TypeError, ValueError):
+        return jsonify({'success': False}), 400
+    order = Order.query.get_or_404(order_id)
+    order.latitude = lat
+    order.longitude = lon
+    order.zone = detect_zone(lat, lon)
+    c = assign_courier_for_zone(order.zone)
+    order.courier = c
+    db.session.commit()
+    return jsonify({'success': True, 'zone': order.zone})
 
 
 @app.route('/orders/<int:order_id>/add_comment_photo', methods=['POST'])
@@ -346,6 +372,42 @@ def delete_zone(zone_id):
 def couriers():
     couriers = Courier.query.all()
     return render_template('couriers.html', couriers=couriers)
+
+
+@app.route('/users')
+@admin_required
+def users():
+    all_users = User.query.all()
+    data = []
+    for u in all_users:
+        zones = ''
+        if u.role == 'courier':
+            c = Courier.query.filter_by(telegram=f'@{u.username}').first()
+            zones = c.zones if c and c.zones else ''
+        data.append({'user': u, 'zones': zones})
+    zones_list = DeliveryZone.query.all()
+    return render_template('users.html', users=data, zones=zones_list)
+
+
+@app.route('/users/create', methods=['POST'])
+@admin_required
+def create_user():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    zones = request.form.getlist('zones')
+    if not username or not password:
+        flash('Введите имя и пароль', 'warning')
+        return redirect(url_for('users'))
+    if User.query.filter_by(username=username).first():
+        flash('Такой пользователь уже существует', 'warning')
+        return redirect(url_for('users'))
+    user = User(username=username, password_hash=generate_password_hash(password), role='courier')
+    courier = Courier(name=username, telegram=f'@{username}', zones=', '.join(zones))
+    db.session.add(user)
+    db.session.add(courier)
+    db.session.commit()
+    flash('Курьер создан', 'success')
+    return redirect(url_for('users'))
 
 
 def _history_query(period):

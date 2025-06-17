@@ -17,3 +17,42 @@ function initMap(orders, zones) {
     }
   });
 }
+document.addEventListener('DOMContentLoaded', function(){
+  var modalEl = document.getElementById('setPointModal');
+  if(!modalEl) return;
+  var map, marker, currentOrder;
+  modalEl.addEventListener('shown.bs.modal', function(e){
+    currentOrder = e.relatedTarget.getAttribute('data-id');
+    var mapDiv = document.getElementById('pointMap');
+    mapDiv.innerHTML = '';
+    map = L.map('pointMap').setView([55.75,37.65],11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom:19,
+      attribution:'&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    marker = null;
+    map.on('click', function(ev){
+      if(marker) map.removeLayer(marker);
+      marker = L.marker(ev.latlng).addTo(map);
+    });
+  });
+  document.getElementById('savePointBtn').addEventListener('click', function(){
+    if(!marker) return;
+    var latlng = marker.getLatLng();
+    fetch('/orders/set_point', {
+      method:'POST',
+      headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({order_id: currentOrder, lat: latlng.lat, lon: latlng.lng})
+    }).then(r=>r.json()).then(function(data){
+      if(data.success){
+        var row = document.querySelector('tr[data-id="'+currentOrder+'"]');
+        if(row){
+          row.classList.remove('table-warning');
+          row.querySelector('.zone-cell').textContent = data.zone || 'Не определена';
+          row.querySelector('.coords-cell').textContent = '✔';
+        }
+        bootstrap.Modal.getInstance(modalEl).hide();
+      }
+    });
+  });
+});

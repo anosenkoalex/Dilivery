@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Пользователи</h2>
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#createUserModal">Создать курьера</button>
+<div class="table-responsive">
+<table class="table table-striped">
+  <thead><tr><th>Username</th><th>Роль</th><th>Зоны</th></tr></thead>
+  <tbody>
+  {% for u in users %}
+  <tr><td>{{ u.user.username }}</td><td>{{ u.user.role }}</td><td>{{ u.zones }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('create_user') }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Создать курьера</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Имя пользователя</label>
+            <input class="form-control" name="username">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Пароль</label>
+            <input type="password" class="form-control" name="password">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Зоны</label>
+            <select class="form-select" name="zones" multiple>
+              {% for z in zones %}
+              <option value="{{ z.name }}">{{ z.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary">Создать</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

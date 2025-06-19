@@ -1,5 +1,5 @@
 function initMap(orders, zones) {
-  var map = L.map('map').setView([55.75, 37.65], 11);
+  var map = L.map('map').setView([42.8746, 74.6122], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function(){
     currentOrder = e.relatedTarget.getAttribute('data-id');
     var mapDiv = document.getElementById('pointMap');
     mapDiv.innerHTML = '';
-    map = L.map('pointMap').setView([55.75,37.65],11);
+    map = L.map('pointMap').setView([42.8746,74.6122],13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom:19,
       attribution:'&copy; OpenStreetMap contributors'

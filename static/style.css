@@ -2,3 +2,15 @@ body { padding-top: 0; }
 @media (min-width:768px){
   #sidebarMenu + .flex-grow-1 { margin-left: 220px; }
 }
+
+.leaflet-map {
+  width: 100%;
+  height: 100%;
+}
+
+.map-container {
+  margin-top: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+}

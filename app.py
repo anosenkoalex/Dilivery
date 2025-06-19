@@ -604,71 +604,73 @@ def _normalize_header(header: str):
 
 
 def run_import(job_id, path, batch_name, col_map=None, header=True):
-    job = db.session.get(ImportJob, job_id)
-    try:
-        rows = read_file_rows(path)
-        if col_map is None:
-            header = True
-            header_row = [h.strip() if isinstance(h, str) else '' for h in rows[0]] if rows else []
-            optional_pattern = re.compile(r"\(optional\)|\[optional\]|optional", re.I)
-            col_map = {}
-            for idx, col_name in enumerate(header_row):
-                if not col_name:
-                    continue
-                cleaned = optional_pattern.sub("", col_name).strip()
-                canonical = _normalize_header(cleaned.lower())
-                if not canonical:
-                    continue
-                col_map[idx] = canonical
-            data_rows = rows[1:]
-        else:
-            data_rows = rows[1:] if header else rows
-        job.total_rows = len(data_rows)
-        db.session.commit()
-
-        imported = 0
-        for row_num, row in enumerate(data_rows, start=2 if header else 1):
-            if all((not c or str(c).strip() == '') for c in row):
-                continue
-            try:
-                data = {}
-                for idx, field in col_map.items():
-                    value = row[idx] if idx < len(row) else None
-                    value = value.strip() if isinstance(value, str) else value
-                    if value == '':
-                        value = None
-                    data[field] = value
-                if not data.get('order_number'):
-                    data['order_number'] = f"AUTO-{int(time.time())}"
-                if not data.get('client_name'):
-                    data['client_name'] = 'Неизвестный клиент'
-                if 'address' in data and data['address']:
-                    lat, lon = geocode_address(data['address'])
-                    data['latitude'] = lat
-                    data['longitude'] = lon
-                    data['zone'] = detect_zone(lat, lon) if lat and lon else None
-                order = Order(**data, import_batch=batch_name)
-                if order.zone:
-                    courier = assign_courier_for_zone(order.zone)
-                    if courier:
-                        order.courier = courier
-                db.session.add(order)
-                imported += 1
-                job.processed = imported
-                db.session.commit()
-            except Exception as exc:
-                app.logger.error('Error importing row %s: %s', row_num, exc)
-        job.status = "done"
-    except Exception:
-        app.logger.exception('Import job failed')
-        job.status = "error"
-    finally:
-        job.finished_at = datetime.utcnow()
-        db.session.commit()
+    """Background import job that processes uploaded files."""
+    with app.app_context():
+        job = db.session.get(ImportJob, job_id)
         try:
-            os.remove(path)
+            rows = read_file_rows(path)
+            if col_map is None:
+                header = True
+                header_row = [h.strip() if isinstance(h, str) else '' for h in rows[0]] if rows else []
+                optional_pattern = re.compile(r"\(optional\)|\[optional\]|optional", re.I)
+                col_map = {}
+                for idx, col_name in enumerate(header_row):
+                    if not col_name:
+                        continue
+                    cleaned = optional_pattern.sub("", col_name).strip()
+                    canonical = _normalize_header(cleaned.lower())
+                    if not canonical:
+                        continue
+                    col_map[idx] = canonical
+                data_rows = rows[1:]
+            else:
+                data_rows = rows[1:] if header else rows
+            job.total_rows = len(data_rows)
+            db.session.commit()
+
+            imported = 0
+            for row_num, row in enumerate(data_rows, start=2 if header else 1):
+                if all((not c or str(c).strip() == '') for c in row):
+                    continue
+                try:
+                    data = {}
+                    for idx, field in col_map.items():
+                        value = row[idx] if idx < len(row) else None
+                        value = value.strip() if isinstance(value, str) else value
+                        if value == '':
+                            value = None
+                        data[field] = value
+                    if not data.get('order_number'):
+                        data['order_number'] = f"AUTO-{int(time.time())}"
+                    if not data.get('client_name'):
+                        data['client_name'] = 'Неизвестный клиент'
+                    if 'address' in data and data['address']:
+                        lat, lon = geocode_address(data['address'])
+                        data['latitude'] = lat
+                        data['longitude'] = lon
+                        data['zone'] = detect_zone(lat, lon) if lat and lon else None
+                    order = Order(**data, import_batch=batch_name)
+                    if order.zone:
+                        courier = assign_courier_for_zone(order.zone)
+                        if courier:
+                            order.courier = courier
+                    db.session.add(order)
+                    imported += 1
+                    job.processed = imported
+                    db.session.commit()
+                except Exception as exc:
+                    app.logger.error('Error importing row %s: %s', row_num, exc)
+            job.status = "done"
         except Exception:
-            pass
+            app.logger.exception('Import job failed')
+            job.status = "error"
+        finally:
+            job.finished_at = datetime.utcnow()
+            db.session.commit()
+            try:
+                os.remove(path)
+            except Exception:
+                pass
 
 
 @app.route('/import/start', methods=['POST'])

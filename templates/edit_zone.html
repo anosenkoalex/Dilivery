@@ -1,6 +1,10 @@
 {% extends 'base.html' %}
 {% block content %}
+{% if new %}
+<h2>Создание зоны</h2>
+{% else %}
 <h2>Редактирование зоны {{ zone.name }}</h2>
+{% endif %}
 <form method="post">
   <div class="mb-3">
     <label class="form-label">Название</label>
@@ -20,32 +24,61 @@
 {% block scripts %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
 <script>
-var polygonCoords = {{ zone.polygon_json|tojson }};
+var existing = {{ zone.polygon_json|tojson }};
 var colorInput = document.getElementById('colorInput');
-var map = L.map('map').setView([polygonCoords[0][1], polygonCoords[0][0]], 12);
+var center = [42.8746, 74.6122];
+if (existing.length) {
+    center = [existing[0][1], existing[0][0]];
+}
+var map = L.map('map').setView(center, 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
-var poly = null;
-function updatePolygon(){
-    if(poly){map.removeLayer(poly);}
-    if(polygonCoords.length){
-        poly = L.polygon(polygonCoords.map(function(p){return [p[1],p[0]];}), {color: colorInput.value}).addTo(map);
-        map.fitBounds(poly.getBounds());
-    }
-    document.getElementById('polygonInput').value = JSON.stringify(polygonCoords);
+
+var drawnItems = new L.FeatureGroup();
+map.addLayer(drawnItems);
+
+if (existing.length) {
+    var poly = L.polygon(existing.map(function(p){ return [p[1], p[0]];}), {color: colorInput.value});
+    drawnItems.addLayer(poly);
+    map.fitBounds(poly.getBounds());
 }
-map.on('click', function(e){
-    polygonCoords.push([e.latlng.lng, e.latlng.lat]);
+
+var drawControl = new L.Control.Draw({
+    edit: {featureGroup: drawnItems, remove: true},
+    draw: {polygon: true, marker:false, polyline:false, rectangle:false, circle:false, circlemarker:false}
+});
+map.addControl(drawControl);
+
+function updatePolygon(){
+    var coords = [];
+    drawnItems.eachLayer(function(layer){
+        if(layer instanceof L.Polygon){
+            layer.setStyle({color: colorInput.value});
+            coords = layer.getLatLngs()[0].map(function(ll){ return [ll.lng, ll.lat]; });
+        }
+    });
+    document.getElementById('polygonInput').value = JSON.stringify(coords);
+}
+
+map.on(L.Draw.Event.CREATED, function(e){
+    drawnItems.clearLayers();
+    drawnItems.addLayer(e.layer);
     updatePolygon();
 });
+map.on(L.Draw.Event.EDITED, updatePolygon);
+map.on(L.Draw.Event.DELETED, updatePolygon);
+
 document.getElementById('resetBtn').addEventListener('click', function(e){
     e.preventDefault();
-    polygonCoords = [];
+    drawnItems.clearLayers();
     updatePolygon();
 });
+
 colorInput.addEventListener('change', updatePolygon);
 updatePolygon();
 </script>

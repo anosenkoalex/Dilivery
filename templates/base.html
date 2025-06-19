@@ -25,13 +25,19 @@
       <span class="d-block mb-2">{{ current_user.username }}</span>
       <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('logout') }}">Выход</a>
     </div>
-    <div id="import-status" style="padding:10px;font-size:12px;">
-      <div id="import-title">Импорт: —</div>
-      <div class="progress" style="height: 8px;">
-        <div id="import-bar" style="width:0%;height:100%;background:#007bff;"></div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+      <div id="import-toast" class="toast" data-bs-autohide="false">
+        <div class="toast-header">
+          <strong class="me-auto">Импорт заказов</strong>
+          <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body">
+          <div class="progress" style="height:8px;">
+            <div id="import-progress-bar" class="progress-bar" style="width:0%"></div>
+          </div>
+          <div id="import-progress-text" class="small mt-1">0/0</div>
+        </div>
       </div>
-      <div id="import-count">—</div>
-      <ul id="import-errors" style="margin-top:5px;color:red;"></ul>
     </div>
   </nav>
 
@@ -93,7 +99,9 @@
 </div>
 {% endif %}
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
 <script src="{{ url_for('static', filename='scripts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/import_progress.js') }}"></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

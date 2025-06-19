@@ -6,6 +6,7 @@ Demo CRM for courier deliveries.
 
 ```bash
 pip install -r requirements.txt
+flask db upgrade
 python app.py
 ```
 

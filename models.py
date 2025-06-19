@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
+from datetime import datetime
 
 
 db = SQLAlchemy()
@@ -47,3 +48,14 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(64), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     role = db.Column(db.String(16), nullable=False)
+
+
+class ImportJob(db.Model):
+    __tablename__ = "import_jobs"
+    id = db.Column(db.String(36), primary_key=True)
+    filename = db.Column(db.String(128))
+    total_rows = db.Column(db.Integer)
+    processed = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(16), default="running")
+    started_at = db.Column(db.DateTime, default=datetime.utcnow)
+    finished_at = db.Column(db.DateTime)

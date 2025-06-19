@@ -4,11 +4,12 @@ import uuid
 import os
 import time
 import re
-from datetime import date, timedelta
+import threading
+from datetime import date, timedelta, datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from models import db, Order, DeliveryZone, Courier, User
+from models import db, Order, DeliveryZone, Courier, User, ImportJob
 from config import Config
 from sqlalchemy import func
 from collections import defaultdict
@@ -331,6 +332,16 @@ def delete_batch():
     return redirect(url_for('orders'))
 
 
+@app.route("/orders/delete_table", methods=["POST"])
+@login_required
+def delete_table():
+    batch = request.form["batch"]
+    Order.query.filter_by(import_batch=batch).delete()
+    db.session.commit()
+    flash(f"Таблица «{batch}» удалена", "success")
+    return redirect(url_for("orders"))
+
+
 @app.route('/map')
 @login_required
 def map_view():
@@ -558,6 +569,114 @@ def _normalize_header(header: str):
         'note': 'note',
     }
     return mapping.get(header)
+
+
+def run_import(job_id, path, batch_name):
+    job = db.session.get(ImportJob, job_id)
+    try:
+        rows = read_file_rows(path)
+        job.total_rows = len(rows)
+        db.session.commit()
+        if not rows:
+            job.status = "error"
+            return
+
+        header_row = [h.strip() if isinstance(h, str) else '' for h in rows[0]]
+        optional_pattern = re.compile(r"\(optional\)|\[optional\]|optional", re.I)
+        col_map = {}
+        for idx, col_name in enumerate(header_row):
+            if not col_name:
+                continue
+            cleaned = optional_pattern.sub("", col_name).strip()
+            canonical = _normalize_header(cleaned.lower())
+            if not canonical:
+                continue
+            col_map[idx] = canonical
+
+        imported = 0
+        for row_num, row in enumerate(rows[1:], start=2):
+            if all((not c or str(c).strip() == '') for c in row):
+                continue
+            try:
+                data = {}
+                for idx, field in col_map.items():
+                    value = row[idx] if idx < len(row) else None
+                    value = value.strip() if isinstance(value, str) else value
+                    if value == '':
+                        value = None
+                    data[field] = value
+                if not data.get('order_number'):
+                    data['order_number'] = f"AUTO-{int(time.time())}"
+                if not data.get('client_name'):
+                    data['client_name'] = 'Неизвестный клиент'
+                if 'address' in data and data['address']:
+                    lat, lon = geocode_address(data['address'])
+                    data['latitude'] = lat
+                    data['longitude'] = lon
+                    data['zone'] = detect_zone(lat, lon) if lat and lon else None
+                order = Order(**data, import_batch=batch_name)
+                if order.zone:
+                    courier = assign_courier_for_zone(order.zone)
+                    if courier:
+                        order.courier = courier
+                db.session.add(order)
+                imported += 1
+                job.processed = imported
+                db.session.commit()
+            except Exception as exc:
+                app.logger.error('Error importing row %s: %s', row_num, exc)
+        job.status = "done"
+    except Exception:
+        app.logger.exception('Import job failed')
+        job.status = "error"
+    finally:
+        job.finished_at = datetime.utcnow()
+        db.session.commit()
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+
+
+@app.route('/import/start', methods=['POST'])
+@login_required
+def import_start():
+    file = request.files.get('file')
+    if not file or file.filename == '':
+        return jsonify({'error': 'no file'}), 400
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ['.csv', '.xlsx']:
+        return jsonify({'error': 'bad format'}), 400
+    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    uid = str(uuid.uuid4()) + ext
+    path = os.path.join(app.config['UPLOAD_FOLDER'], uid)
+    file.save(path)
+    batch_name = os.path.splitext(file.filename)[0] or os.path.splitext(uid)[0]
+    job = ImportJob(id=str(uuid.uuid4()), filename=uid, total_rows=0, processed=0)
+    db.session.add(job)
+    db.session.commit()
+    threading.Thread(target=run_import, args=(job.id, path, batch_name)).start()
+    return jsonify({'job_id': job.id})
+
+
+@app.route('/import/progress/<job_id>')
+@login_required
+def import_progress(job_id):
+    return render_template('progress.html', job_id=job_id)
+
+
+@app.route('/import/status/<job_id>')
+@login_required
+def import_status(job_id):
+    job = ImportJob.query.get_or_404(job_id)
+    return jsonify({'processed': job.processed, 'total_rows': job.total_rows or 0, 'status': job.status})
+
+
+@app.route('/import/result/<job_id>')
+@login_required
+def import_result(job_id):
+    job = ImportJob.query.get_or_404(job_id)
+    return render_template('import_result.html', count=job.processed)
 
 
 @app.route('/orders/import', methods=['GET', 'POST'])

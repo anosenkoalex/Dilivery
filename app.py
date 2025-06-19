@@ -103,15 +103,47 @@ def populate_demo_data():
     db.session.add_all(zones)
     db.session.commit()
 
-    couriers = []
-    users = [User(username="admin", password_hash=generate_password_hash("admin"), role="admin")]
+    couriers_to_add = []
+    users = []
+
+    if not User.query.filter_by(username="admin").first():
+        users.append(
+            User(
+                username="admin",
+                password_hash=generate_password_hash("admin"),
+                role="admin",
+            )
+        )
+
     for i in range(5):
-        courier = Courier(name=f"Courier {i+1}", telegram=f"@courier{i+1}", zones=f"Zone {i+1}")
-        couriers.append(courier)
-        users.append(User(username=f"courier{i+1}", password_hash=generate_password_hash("courier"), role="courier"))
-    db.session.add_all(couriers)
-    db.session.add_all(users)
+        courier_name = f"Courier {i+1}"
+        courier = Courier.query.filter_by(name=courier_name).first()
+        if not courier:
+            courier = Courier(
+                name=courier_name,
+                telegram=f"@courier{i+1}",
+                zones=f"Zone {i+1}",
+            )
+            couriers_to_add.append(courier)
+
+        if not User.query.filter_by(username=f"courier{i+1}").first():
+            users.append(
+                User(
+                    username=f"courier{i+1}",
+                    password_hash=generate_password_hash("courier"),
+                    role="courier",
+                )
+            )
+
+    if couriers_to_add:
+        db.session.add_all(couriers_to_add)
+    if users:
+        db.session.add_all(users)
     db.session.commit()
+
+    couriers = [
+        Courier.query.filter_by(name=f"Courier {i+1}").first() for i in range(5)
+    ]
 
     orders = []
     for i in range(20):

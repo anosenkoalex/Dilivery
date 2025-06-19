@@ -487,8 +487,11 @@ def read_file_rows(path):
     return rows
 
 
-def _normalize_header(header: str) -> str:
-    """Collapse various header names to canonical Order field names."""
+def _normalize_header(header: str):
+    """Collapse various header names to canonical Order field names.
+
+    Unknown headers return ``None`` so they can be ignored during import.
+    """
     header = header.strip().lower()
     mapping = {
         'номер заказа': 'order_number',
@@ -510,7 +513,7 @@ def _normalize_header(header: str) -> str:
         'комментарий': 'comment',
         'note': 'note',
     }
-    return mapping.get(header, header.replace(' ', '_'))
+    return mapping.get(header)
 
 
 @app.route('/orders/import', methods=['GET', 'POST'])
@@ -562,6 +565,8 @@ def import_orders_finish():
             continue
         cleaned = optional_pattern.sub("", col_name).strip()
         canonical = _normalize_header(cleaned.lower())
+        if not canonical:
+            continue
         col_map[idx] = canonical
 
     imported = 0

@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', function(){
       if(marker) map.removeLayer(marker);
       marker = L.marker(ev.latlng).addTo(map);
     });
+    setTimeout(function(){ map.invalidateSize(); }, 0);
   });
   document.getElementById('savePointBtn').addEventListener('click', function(){
     if(!marker) return;

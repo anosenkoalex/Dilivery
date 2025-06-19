@@ -603,30 +603,31 @@ def _normalize_header(header: str):
     return mapping.get(header)
 
 
-def run_import(job_id, path, batch_name):
+def run_import(job_id, path, batch_name, col_map=None, header=True):
     job = db.session.get(ImportJob, job_id)
     try:
         rows = read_file_rows(path)
-        job.total_rows = len(rows)
+        if col_map is None:
+            header = True
+            header_row = [h.strip() if isinstance(h, str) else '' for h in rows[0]] if rows else []
+            optional_pattern = re.compile(r"\(optional\)|\[optional\]|optional", re.I)
+            col_map = {}
+            for idx, col_name in enumerate(header_row):
+                if not col_name:
+                    continue
+                cleaned = optional_pattern.sub("", col_name).strip()
+                canonical = _normalize_header(cleaned.lower())
+                if not canonical:
+                    continue
+                col_map[idx] = canonical
+            data_rows = rows[1:]
+        else:
+            data_rows = rows[1:] if header else rows
+        job.total_rows = len(data_rows)
         db.session.commit()
-        if not rows:
-            job.status = "error"
-            return
-
-        header_row = [h.strip() if isinstance(h, str) else '' for h in rows[0]]
-        optional_pattern = re.compile(r"\(optional\)|\[optional\]|optional", re.I)
-        col_map = {}
-        for idx, col_name in enumerate(header_row):
-            if not col_name:
-                continue
-            cleaned = optional_pattern.sub("", col_name).strip()
-            canonical = _normalize_header(cleaned.lower())
-            if not canonical:
-                continue
-            col_map[idx] = canonical
 
         imported = 0
-        for row_num, row in enumerate(rows[1:], start=2):
+        for row_num, row in enumerate(data_rows, start=2 if header else 1):
             if all((not c or str(c).strip() == '') for c in row):
                 continue
             try:
@@ -687,7 +688,7 @@ def import_start():
     job = ImportJob(id=str(uuid.uuid4()), filename=uid, total_rows=0, processed=0)
     db.session.add(job)
     db.session.commit()
-    threading.Thread(target=run_import, args=(job.id, path, batch_name)).start()
+    threading.Thread(target=run_import, args=(job.id, path, batch_name, None, True)).start()
     return jsonify({'job_id': job.id})
 
 
@@ -711,124 +712,54 @@ def import_result(job_id):
     return render_template('import_result.html', count=job.processed)
 
 
-@app.route('/orders/import', methods=['GET', 'POST'])
+@app.route('/import/upload', methods=['GET', 'POST'])
 @admin_required
-def import_orders():
-    if request.method == 'POST' and 'file' in request.files:
-        file = request.files['file']
-        if file.filename == '':
+def import_upload():
+    if request.method == 'POST':
+        file = request.files.get('file')
+        if not file or file.filename == '':
             flash('Выберите файл', 'warning')
-            return redirect(url_for('import_orders'))
+            return redirect(url_for('import_upload'))
         ext = os.path.splitext(file.filename)[1].lower()
         if ext not in ['.csv', '.xlsx']:
             flash('Недопустимый формат файла', 'warning')
-            return redirect(url_for('import_orders'))
+            return redirect(url_for('import_upload'))
         uid = str(uuid.uuid4()) + ext
         upload_dir = app.config['UPLOAD_FOLDER']
         os.makedirs(upload_dir, exist_ok=True)
         path = os.path.join(upload_dir, uid)
         file.save(path)
-        batch_name = os.path.splitext(file.filename)[0] or os.path.splitext(uid)[0]
-        rows = read_file_rows(path)
-        first = rows[0] if rows else []
-        columns = [{'index': i, 'name': v or f"Column {i+1}"} for i, v in enumerate(first)]
-        return render_template('import_mapping.html', file_id=uid, columns=columns, header=True, batch_name=batch_name)
+        job = ImportJob(id=str(uuid.uuid4()), filename=uid, total_rows=0, processed=0)
+        db.session.add(job)
+        db.session.commit()
+        return redirect(url_for('import_mapping', job_id=job.id))
     return render_template('import_upload.html')
 
 
-@app.route('/orders/import/finish', methods=['POST'])
+@app.route('/import/mapping/<job_id>')
 @admin_required
-def import_orders_finish():
-    file_id = request.form.get('file_id')
-    if not file_id:
-        return redirect(url_for('import_orders'))
-
-    path = os.path.join(app.config['UPLOAD_FOLDER'], file_id)
-    if not os.path.exists(path):
-        return redirect(url_for('import_orders'))
-
-    batch_name = request.form.get('batch_name') or os.path.splitext(file_id)[0]
+def import_mapping(job_id):
+    job = ImportJob.query.get_or_404(job_id)
+    path = os.path.join(app.config['UPLOAD_FOLDER'], job.filename)
     rows = read_file_rows(path)
-    if not rows:
-        flash('Файл пуст', 'warning')
-        return redirect(url_for('import_orders'))
+    preview = rows[:5]
+    column_count = max(len(r) for r in preview) if preview else 0
+    return render_template('import_mapping.html', job_id=job.id, preview=preview, column_count=column_count)
 
-    header_row = [h.strip() if isinstance(h, str) else '' for h in rows[0]]
 
-    optional_pattern = re.compile(r"\(optional\)|\[optional\]|optional", re.I)
+@app.route('/import/finish/<job_id>', methods=['POST'])
+@admin_required
+def import_finish(job_id):
+    job = ImportJob.query.get_or_404(job_id)
+    path = os.path.join(app.config['UPLOAD_FOLDER'], job.filename)
+    batch_name = os.path.splitext(job.filename)[0]
+    header = bool(request.form.get('header'))
     col_map = {}
-    for idx, col_name in enumerate(header_row):
-        if not col_name:
-            continue
-        cleaned = optional_pattern.sub("", col_name).strip()
-        canonical = _normalize_header(cleaned.lower())
-        if not canonical:
-            continue
-        col_map[idx] = canonical
-
-    imported = 0
-    errors = []
-    skipped_rows = []
-
-    for row_num, row in enumerate(rows[1:], start=2):
-        if all((not c or str(c).strip() == '') for c in row):
-            continue
-        try:
-            data = {}
-            for idx, field in col_map.items():
-                if idx >= len(row):
-                    value = None
-                else:
-                    value = row[idx]
-                    value = value.strip() if isinstance(value, str) else value
-                    if value == '':
-                        value = None
-                data[field] = value
-
-            if not data.get('order_number'):
-                data['order_number'] = f"AUTO-{int(time.time())}"
-            if not data.get('client_name'):
-                data['client_name'] = 'Неизвестный клиент'
-
-            if 'address' in data and data['address']:
-                lat, lon = geocode_address(data['address'])
-                data['latitude'] = lat
-                data['longitude'] = lon
-                data['zone'] = detect_zone(lat, lon) if lat and lon else None
-            order = Order(**data, import_batch=batch_name)
-            if order.zone:
-                courier = assign_courier_for_zone(order.zone)
-                if courier:
-                    order.courier = courier
-
-            db.session.add(order)
-            imported += 1
-        except Exception as exc:
-            errors.append(f'Строка {row_num}: {exc}')
-            print(f"[!] Ошибка в строке {row_num}: {exc}")
-            app.logger.error('Error importing row %s: %s', row_num, exc)
-            skipped_rows.append((row_num, str(exc)))
-
-    print(f"[+] Импортировано строк: {imported} из {len(rows)}")
-
-    db.session.commit()
-    print(f"[✓] В базе добавлено заказов: {imported}")
-
-    if skipped_rows:
-        flash(f"❌ Пропущены {len(skipped_rows)} строк(и) — из-за ошибок в данных. Подробности в логах.", "danger")
-        app.logger.error('Skipped %s rows due to errors', len(skipped_rows))
-
-    try:
-        os.remove(path)
-    except PermissionError:
-        time.sleep(1)
-        try:
-            os.remove(path)
-        except Exception as e:
-            print(f"[!] Ошибка удаления файла: {e}")
-
-    flash(f'Импортировано заказов: {imported}', 'success')
-    return render_template('import_finish.html', imported=imported, errors=errors)
+    for key, value in request.form.items():
+        if key.startswith('map_') and value:
+            col_map[int(key.split('_')[1])] = value
+    threading.Thread(target=run_import, args=(job.id, path, batch_name, col_map, header)).start()
+    return 'OK'
 
 
 @app.route('/stats')

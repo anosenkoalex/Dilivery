@@ -2,7 +2,7 @@
 {% block content %}
 <h2>Заказы</h2>
 {% if current_user.role == 'admin' %}
-<a class="btn btn-sm btn-success mb-3" href="{{ url_for('import_orders') }}">Импорт заказов</a>
+<a class="btn btn-sm btn-success mb-3" href="{{ url_for('import_upload') }}">Импорт заказов</a>
 {% endif %}
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}

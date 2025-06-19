@@ -1,9 +1,12 @@
 import eventlet
 eventlet.monkey_patch()
 
+import os
+if os.environ.get("FLASK_RUN_FROM_CLI"):
+    raise RuntimeError("❌ Не запускай через 'flask run'. Используй только 'python app.py'.")
+
 import csv
 import json
-import os
 import re
 import threading
 import time

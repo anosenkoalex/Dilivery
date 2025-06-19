@@ -1,5 +1,5 @@
 function initMap(orders, zones) {
-  var map = L.map('map').setView([42.8746, 74.6122], 13);
+  const map = L.map('map').setView([42.8746, 74.6122], 13);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
@@ -15,6 +15,20 @@ function initMap(orders, zones) {
       var marker = L.marker([o.lat, o.lng]).addTo(map);
       var popup = '<b>Заказ #' + o.id + '</b><br>' + o.address + '<br>Статус: ' + o.status;
       marker.bindPopup(popup);
+    }
+  });
+}
+
+function initZoneMaps(zones) {
+  zones.forEach(function(z){
+    const map = L.map('map-' + z.id).setView([42.8746, 74.6122], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+    if (z.polygon && z.polygon.length) {
+      var poly = L.polygon(z.polygon.map(function(p){ return [p[1], p[0]]; }), {color: z.color}).addTo(map);
+      map.fitBounds(poly.getBounds());
     }
   });
 }

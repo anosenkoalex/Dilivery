@@ -1,7 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Карта заказов</h2>
-<div id="map"></div>
+<div class="map-container">
+  <div id="map" class="leaflet-map"></div>
+</div>
 {% endblock %}
 {% block scripts %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
@@ -9,6 +11,8 @@
 <script>
 var orders = {{ orders|tojson }};
 var zones = {{ zones|tojson }};
-initMap(orders, zones);
+window.addEventListener('DOMContentLoaded', function(){
+  initMap(orders, zones);
+});
 </script>
 {% endblock %}

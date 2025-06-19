@@ -1,7 +1,9 @@
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import UserMixin
 from datetime import datetime
+from uuid import uuid4
 
+from flask_login import UserMixin
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.dialects.postgresql import UUID
 
 db = SQLAlchemy()
 
@@ -22,8 +24,8 @@ class Order(db.Model):
     delivered_at = db.Column(db.Date)
     comment = db.Column(db.Text)
     photo_filename = db.Column(db.String(128))
-    courier_id = db.Column(db.Integer, db.ForeignKey('couriers.id'))
-    courier = db.relationship('Courier', backref='orders')
+    courier_id = db.Column(db.Integer, db.ForeignKey("couriers.id"))
+    courier = db.relationship("Courier", backref="orders")
 
 
 class DeliveryZone(db.Model):
@@ -52,10 +54,11 @@ class User(db.Model, UserMixin):
 
 class ImportJob(db.Model):
     __tablename__ = "import_jobs"
-    id = db.Column(db.String(36), primary_key=True)
-    filename = db.Column(db.String(128))
+
+    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    filename = db.Column(db.String(256))
     total_rows = db.Column(db.Integer)
-    processed = db.Column(db.Integer, default=0)
-    status = db.Column(db.String(16), default="running")
+    processed_rows = db.Column(db.Integer, default=0)
+    status = db.Column(db.String(32), default="running")
     started_at = db.Column(db.DateTime, default=datetime.utcnow)
     finished_at = db.Column(db.DateTime)

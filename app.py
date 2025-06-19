@@ -388,6 +388,22 @@ def zones():
     return render_template("zones.html", zones=zones_dict)
 
 
+@app.route('/zones/new', methods=['GET', 'POST'])
+@admin_required
+def create_zone():
+    if request.method == 'POST':
+        name = request.form.get('name') or ''
+        color = request.form.get('color') or '#3388ff'
+        polygon = request.form.get('polygon') or '[]'
+        zone = DeliveryZone(name=name, color=color, polygon_json=polygon)
+        db.session.add(zone)
+        db.session.commit()
+        flash('Зона создана', 'success')
+        return redirect(url_for('zones'))
+    zone = DeliveryZone(name='', color='#3388ff', polygon_json='[]')
+    return render_template('edit_zone.html', zone=zone, new=True)
+
+
 @app.route('/zones/<int:zone_id>/edit', methods=['GET', 'POST'])
 @admin_required
 def edit_zone(zone_id):

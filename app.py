@@ -309,6 +309,29 @@ def add_comment_photo(order_id):
     return redirect(url_for('orders'))
 
 
+@app.route('/orders/<int:order_id>/delete', methods=['POST'])
+@admin_required
+def delete_order(order_id):
+    """Delete a single order."""
+    order = Order.query.get_or_404(order_id)
+    db.session.delete(order)
+    db.session.commit()
+    flash('Заказ удалён', 'success')
+    return redirect(url_for('orders'))
+
+
+@app.route('/orders/delete_batch', methods=['POST'])
+@admin_required
+def delete_batch():
+    """Delete all orders imported in the given batch."""
+    batch = request.form.get('batch')
+    if batch:
+        Order.query.filter_by(import_batch=batch).delete()
+        db.session.commit()
+        flash(f"Импорт '{batch}' удалён", 'success')
+    return redirect(url_for('orders'))
+
+
 @app.route('/map')
 @login_required
 def map_view():

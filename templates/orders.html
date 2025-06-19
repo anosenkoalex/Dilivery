@@ -21,7 +21,15 @@
   <div class="tab-pane fade show active" id="tabAll">
     {% for batch, lst in orders_by_batch.items() %}
     <details class="mb-3" {% if loop.first %}open{% endif %}>
-      <summary class="h5">Импорт: {{ batch }}</summary>
+      <summary class="h5 d-flex justify-content-between align-items-center">
+        <span>Импорт: {{ batch }}</span>
+        {% if current_user.role == 'admin' %}
+        <form method="post" action="{{ url_for('delete_batch') }}" class="ms-2 d-inline" onsubmit="return confirm('Удалить весь импорт?');">
+          <input type="hidden" name="batch" value="{{ batch }}">
+          <button type="submit" class="btn btn-sm btn-danger">Удалить весь импорт</button>
+        </form>
+        {% endif %}
+      </summary>
       <div class="table-responsive mt-2">
         <table class="table table-striped">
           <thead>
@@ -90,9 +98,14 @@
                       <div class="mb-3"><label class="form-label">Заметка</label><textarea class="form-control" name="note">{{ o.note or '' }}</textarea></div>
                       <div class="mb-3"><label class="form-label">Курьер</label><select class="form-select" name="courier_id"><option value="">Авто</option>{% for c in couriers %}<option value="{{ c.id }}" {% if o.courier_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
                     </div>
-                    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
                   </form></div></div>
                 </div>
+                {% if current_user.role == 'admin' %}
+                <form method="post" action="{{ url_for('delete_order', order_id=o.id) }}" class="d-inline" onsubmit="return confirm('Удалить заказ?');">
+                  <button type="submit" class="btn btn-sm btn-danger mt-1">🗑 Удалить</button>
+                </form>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -134,7 +147,13 @@
                 <td class="zone-cell">{{ o.zone or 'Не определена' }}</td>
                 <td>{{ o.courier.name if o.courier else '—' }}</td>
                 <td>{% if o.comment %}<div>{{ o.comment }}</div>{% endif %}{% if o.photo_filename %}<a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>{% endif %}</td>
-                <td></td>
+                <td>
+                  {% if current_user.role == 'admin' %}
+                  <form method="post" action="{{ url_for('delete_order', order_id=o.id) }}" class="d-inline" onsubmit="return confirm('Удалить заказ?');">
+                    <button type="submit" class="btn btn-sm btn-danger">🗑 Удалить</button>
+                  </form>
+                  {% endif %}
+                </td>
               </tr>
               {% endfor %}
             </tbody>

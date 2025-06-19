@@ -25,6 +25,14 @@
       <span class="d-block mb-2">{{ current_user.username }}</span>
       <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('logout') }}">Выход</a>
     </div>
+    <div id="import-status" style="padding: 10px; border-top: 1px solid #ddd; font-size: 12px;">
+      <div id="import-title" style="margin-bottom: 4px; font-weight: bold;">Импорт: —</div>
+      <div class="progress" style="height: 8px;">
+        <div id="import-bar" class="progress-bar" style="width:0%; height:100%; background:#007bff;"></div>
+      </div>
+      <div id="import-count">—</div>
+      <ul id="import-errors" style="margin-top: 5px; color: red; list-style-type: disc;"></ul>
+    </div>
   </nav>
 
   <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasMenu">

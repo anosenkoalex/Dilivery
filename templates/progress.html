@@ -6,6 +6,9 @@
 <p id="txt">0 / 0</p>
 <script>
 const jid = "{{ job_id }}";
+if (window.opener && window.opener.startImportMonitor) {
+    window.opener.startImportMonitor(jid, "{{ filename }}");
+}
 function poll(){
     fetch(`/import/status/${jid}`).then(r=>r.json()).then(d=>{
         const pct = d.total_rows? d.processed/d.total_rows*100 : 0;

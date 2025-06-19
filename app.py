@@ -2,7 +2,7 @@ import eventlet
 eventlet.monkey_patch()
 
 import os
-if os.environ.get("FLASK_RUN_FROM_CLI"):
+if os.environ.get("FLASK_RUN_FROM_CLI") and not os.environ.get("ALLOW_FLASK_CLI"):
     raise RuntimeError("❌ Не запускай через 'flask run'. Используй только 'python app.py'.")
 
 import csv

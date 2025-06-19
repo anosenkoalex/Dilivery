@@ -125,6 +125,7 @@ def populate_demo_data():
             longitude=lng,
             zone=zone.name,
             courier=couriers[i % 5],
+            import_batch="DEMO",
         )
         orders.append(order)
     db.session.add_all(orders)
@@ -191,13 +192,18 @@ def orders():
             query = query.filter(Order.zone.in_(zones))
         else:
             query = query.filter(db.text('0=1'))
-    orders = query.all()
+    orders = query.order_by(Order.id.desc()).all()
     orders_by_zone = {}
+    orders_by_batch = {}
     for o in orders:
         key = o.zone or 'Не определена'
         orders_by_zone.setdefault(key, []).append(o)
+        bkey = o.import_batch or 'Без импорта'
+        if bkey not in orders_by_batch:
+            orders_by_batch[bkey] = []
+        orders_by_batch[bkey].append(o)
     couriers_list = Courier.query.all()
-    return render_template('orders.html', orders=orders, orders_by_zone=orders_by_zone, couriers=couriers_list)
+    return render_template('orders.html', orders=orders, orders_by_zone=orders_by_zone, orders_by_batch=orders_by_batch, couriers=couriers_list)
 
 
 @app.route('/orders/<int:order_id>/update', methods=['POST'])
@@ -533,10 +539,11 @@ def import_orders():
         os.makedirs(upload_dir, exist_ok=True)
         path = os.path.join(upload_dir, uid)
         file.save(path)
+        batch_name = os.path.splitext(file.filename)[0] or os.path.splitext(uid)[0]
         rows = read_file_rows(path)
         first = rows[0] if rows else []
         columns = [{'index': i, 'name': v or f"Column {i+1}"} for i, v in enumerate(first)]
-        return render_template('import_mapping.html', file_id=uid, columns=columns, header=True)
+        return render_template('import_mapping.html', file_id=uid, columns=columns, header=True, batch_name=batch_name)
     return render_template('import_upload.html')
 
 
@@ -551,6 +558,7 @@ def import_orders_finish():
     if not os.path.exists(path):
         return redirect(url_for('import_orders'))
 
+    batch_name = request.form.get('batch_name') or os.path.splitext(file_id)[0]
     rows = read_file_rows(path)
     if not rows:
         flash('Файл пуст', 'warning')
@@ -598,7 +606,7 @@ def import_orders_finish():
                 data['latitude'] = lat
                 data['longitude'] = lon
                 data['zone'] = detect_zone(lat, lon) if lat and lon else None
-            order = Order(**data)
+            order = Order(**data, import_batch=batch_name)
             if order.zone:
                 courier = assign_courier_for_zone(order.zone)
                 if courier:

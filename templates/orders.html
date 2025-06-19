@@ -19,83 +19,88 @@
 </ul>
 <div class="tab-content">
   <div class="tab-pane fade show active" id="tabAll">
-    <div class="table-responsive">
-      <table class="table table-striped">
-        <thead>
-          <tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr>
-        </thead>
-        <tbody>
-          {% for o in orders %}
-          <tr data-id="{{ o.id }}" class="{% if not o.zone %}table-warning{% endif %}">
-            <td>{{ o.id }}</td>
-            <td>{{ o.order_number }}</td>
-            <td>{{ o.client_name }}</td>
-            <td>{{ o.phone }}</td>
-            <td>{{ o.address }}</td>
-            <td>
-              {% set status_class = {
-                  'Складская обработка':'bg-secondary',
-                  'Подготовлен к доставке':'bg-info',
-                  'Выдан':'bg-warning',
-                  'Доставлен':'bg-success'
-              } %}
-              <span class="badge {{ status_class.get(o.status, 'bg-secondary') }}">{{ o.status }}</span>
-              <button class="btn btn-sm btn-link p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#statusForm{{ o.id }}">Изменить</button>
-              <div class="collapse mt-1" id="statusForm{{ o.id }}">
-                <form method="post" class="d-flex">
-                  <input type="hidden" name="id" value="{{ o.id }}">
-                  <select name="status" class="form-select form-select-sm me-2">
-                    {% for st in ['Складская обработка','Подготовлен к доставке','Выдан','Доставлен'] %}
-                    <option value="{{ st }}" {% if o.status==st %}selected{% endif %}>{{ st }}</option>
-                    {% endfor %}
-                  </select>
-                  <button type="submit" class="btn btn-sm btn-primary">OK</button>
-                </form>
-              </div>
-            </td>
-            <td class="coords-cell">
-              {% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary set-point-btn" data-id="{{ o.id }}">Указать точку</button>{% else %} <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}{% endif %}
-            </td>
-            <td class="zone-cell">{{ o.zone or 'Не определена' }}</td>
-            <td>{{ o.courier.name if o.courier else '—' }}</td>
-            <td>
-              {% if o.comment %}<div>{{ o.comment }}</div>{% endif %}
-              {% if o.photo_filename %}<a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>{% endif %}
-              {% if current_user.role == 'courier' %}
-              <button class="btn btn-sm btn-link p-0 ms-2" type="button" data-bs-toggle="modal" data-bs-target="#commentModal{{ o.id }}">Добавить фото / комментарий</button>
-              <div class="modal fade" id="commentModal{{ o.id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog"><div class="modal-content"><form method="post" action="{{ url_for('add_comment_photo', order_id=o.id) }}" enctype="multipart/form-data">
-                  <div class="modal-header"><h5 class="modal-title">Комментарий для заказа {{ o.order_number }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                  <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Комментарий</label><textarea class="form-control" name="comment"></textarea></div>
-                    <div class="mb-3"><label class="form-label">Фото</label><input type="file" class="form-control" name="photo" accept="image/jpeg,image/png"></div>
-                  </div>
-                  <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
-                </form></div></div>
-              </div>
-              {% endif %}
-            </td>
-            <td>
-              <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ o.id }}">Редактировать</button>
-              <div class="modal fade" id="editModal{{ o.id }}" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog"><div class="modal-content"><form method="post" action="{{ url_for('update_order', order_id=o.id) }}">
-                  <div class="modal-header"><h5 class="modal-title">Редактирование заказа {{ o.order_number }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-                  <div class="modal-body">
-                    <div class="mb-3"><label class="form-label">Имя клиента</label><input type="text" class="form-control" name="client_name" value="{{ o.client_name }}"></div>
-                    <div class="mb-3"><label class="form-label">Телефон</label><input type="text" class="form-control" name="phone" value="{{ o.phone }}"></div>
-                    <div class="mb-3"><label class="form-label">Адрес</label><input type="text" class="form-control" name="address" value="{{ o.address }}"></div>
-                    <div class="mb-3"><label class="form-label">Заметка</label><textarea class="form-control" name="note">{{ o.note or '' }}</textarea></div>
-                    <div class="mb-3"><label class="form-label">Курьер</label><select class="form-select" name="courier_id"><option value="">Авто</option>{% for c in couriers %}<option value="{{ c.id }}" {% if o.courier_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
-                  </div>
-                  <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
-                </form></div></div>
-              </div>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    {% for batch, lst in orders_by_batch.items() %}
+    <details class="mb-3" {% if loop.first %}open{% endif %}>
+      <summary class="h5">Импорт: {{ batch }}</summary>
+      <div class="table-responsive mt-2">
+        <table class="table table-striped">
+          <thead>
+            <tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr>
+          </thead>
+          <tbody>
+            {% for o in lst %}
+            <tr data-id="{{ o.id }}" class="{% if not o.zone %}table-warning{% endif %}">
+              <td>{{ o.id }}</td>
+              <td>{{ o.order_number }}</td>
+              <td>{{ o.client_name }}</td>
+              <td>{{ o.phone }}</td>
+              <td>{{ o.address }}</td>
+              <td>
+                {% set status_class = {
+                    'Складская обработка':'bg-secondary',
+                    'Подготовлен к доставке':'bg-info',
+                    'Выдан':'bg-warning',
+                    'Доставлен':'bg-success'
+                } %}
+                <span class="badge {{ status_class.get(o.status, 'bg-secondary') }}">{{ o.status }}</span>
+                <button class="btn btn-sm btn-link p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#statusForm{{ o.id }}">Изменить</button>
+                <div class="collapse mt-1" id="statusForm{{ o.id }}">
+                  <form method="post" class="d-flex">
+                    <input type="hidden" name="id" value="{{ o.id }}">
+                    <select name="status" class="form-select form-select-sm me-2">
+                      {% for st in ['Складская обработка','Подготовлен к доставке','Выдан','Доставлен'] %}
+                      <option value="{{ st }}" {% if o.status==st %}selected{% endif %}>{{ st }}</option>
+                      {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-primary">OK</button>
+                  </form>
+                </div>
+              </td>
+              <td class="coords-cell">
+                {% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary set-point-btn" data-id="{{ o.id }}">Указать точку</button>{% else %} <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}{% endif %}
+              </td>
+              <td class="zone-cell">{{ o.zone or 'Не определена' }}</td>
+              <td>{{ o.courier.name if o.courier else '—' }}</td>
+              <td>
+                {% if o.comment %}<div>{{ o.comment }}</div>{% endif %}
+                {% if o.photo_filename %}<a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>{% endif %}
+                {% if current_user.role == 'courier' %}
+                <button class="btn btn-sm btn-link p-0 ms-2" type="button" data-bs-toggle="modal" data-bs-target="#commentModal{{ o.id }}">Добавить фото / комментарий</button>
+                <div class="modal fade" id="commentModal{{ o.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog"><div class="modal-content"><form method="post" action="{{ url_for('add_comment_photo', order_id=o.id) }}" enctype="multipart/form-data">
+                    <div class="modal-header"><h5 class="modal-title">Комментарий для заказа {{ o.order_number }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                      <div class="mb-3"><label class="form-label">Комментарий</label><textarea class="form-control" name="comment"></textarea></div>
+                      <div class="mb-3"><label class="form-label">Фото</label><input type="file" class="form-control" name="photo" accept="image/jpeg,image/png"></div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
+                  </form></div></div>
+                </div>
+                {% endif %}
+              </td>
+              <td>
+                <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ o.id }}">Редактировать</button>
+                <div class="modal fade" id="editModal{{ o.id }}" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog"><div class="modal-content"><form method="post" action="{{ url_for('update_order', order_id=o.id) }}">
+                    <div class="modal-header"><h5 class="modal-title">Редактирование заказа {{ o.order_number }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                    <div class="modal-body">
+                      <div class="mb-3"><label class="form-label">Имя клиента</label><input type="text" class="form-control" name="client_name" value="{{ o.client_name }}"></div>
+                      <div class="mb-3"><label class="form-label">Телефон</label><input type="text" class="form-control" name="phone" value="{{ o.phone }}"></div>
+                      <div class="mb-3"><label class="form-label">Адрес</label><input type="text" class="form-control" name="address" value="{{ o.address }}"></div>
+                      <div class="mb-3"><label class="form-label">Заметка</label><textarea class="form-control" name="note">{{ o.note or '' }}</textarea></div>
+                      <div class="mb-3"><label class="form-label">Курьер</label><select class="form-select" name="courier_id"><option value="">Авто</option>{% for c in couriers %}<option value="{{ c.id }}" {% if o.courier_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
+                  </form></div></div>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </details>
+    {% endfor %}
   </div>
   <div class="tab-pane fade" id="tabZones">
     {% for zn, lst in orders_by_zone.items() %}

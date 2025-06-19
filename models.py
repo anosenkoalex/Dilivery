@@ -13,6 +13,7 @@ class Order(db.Model):
     phone = db.Column(db.String(64))
     address = db.Column(db.String(256))
     note = db.Column(db.Text)
+    import_batch = db.Column(db.String(64))
     status = db.Column(db.String(64), default="Складская обработка")
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)

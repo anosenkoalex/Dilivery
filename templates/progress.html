@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="progress">
+    <div id="bar" class="progress-bar" style="width:0%"></div>
+</div>
+<p id="txt">0 / 0</p>
+<script>
+const jid = "{{ job_id }}";
+function poll(){
+    fetch(`/import/status/${jid}`).then(r=>r.json()).then(d=>{
+        const pct = d.total_rows? d.processed/d.total_rows*100 : 0;
+        bar.style.width = pct+"%";
+        txt.textContent = `${d.processed}/${d.total_rows}`;
+        if(d.status==="running") setTimeout(poll,1000);
+        else location.href = `/import/result/${jid}`;
+    });
+}
+poll();
+</script>
+{% endblock %}
+

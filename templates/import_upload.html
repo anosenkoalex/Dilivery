@@ -1,10 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Импорт заказов</h2>
-<form method="post" enctype="multipart/form-data">
+<form id="uploadForm" method="post" enctype="multipart/form-data" action="{{ url_for('import_start') }}">
   <div class="mb-3">
     <input class="form-control" type="file" name="file" accept=".csv,.xlsx">
   </div>
   <button type="submit" class="btn btn-primary">Загрузить</button>
 </form>
+<script>
+document.getElementById('uploadForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const fd = new FormData(this);
+  fetch(this.action, {method:'POST', body: fd}).then(r=>r.json()).then(d=>{
+    if(d.job_id){
+      window.open(`/import/progress/${d.job_id}`, '_blank');
+    }
+  });
+});
+</script>
 {% endblock %}

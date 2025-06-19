@@ -24,9 +24,9 @@
       <summary class="h5 d-flex justify-content-between align-items-center">
         <span>Импорт: {{ batch }}</span>
         {% if current_user.role == 'admin' %}
-        <form method="post" action="{{ url_for('delete_batch') }}" class="ms-2 d-inline" onsubmit="return confirm('Удалить весь импорт?');">
+        <form method="post" action="/orders/delete_table" class="d-inline" onsubmit="return confirm('Удалить ВСЮ таблицу?');">
           <input type="hidden" name="batch" value="{{ batch }}">
-          <button type="submit" class="btn btn-sm btn-danger">Удалить весь импорт</button>
+          <button type="submit" class="btn btn-sm btn-danger">Удалить таблицу</button>
         </form>
         {% endif %}
       </summary>

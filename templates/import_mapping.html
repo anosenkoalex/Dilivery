@@ -1,25 +1,49 @@
 {% extends 'base.html' %}
 {% block content %}
-<h2>Сопоставление столбцов</h2>
-<form method="post" action="{{ url_for('import_orders_finish') }}">
-  <input type="hidden" name="file_id" value="{{ file_id }}">
-  <input type="hidden" name="batch_name" value="{{ batch_name }}">
+<h2>Сопоставление полей</h2>
+<form id="mapForm" method="post" action="{{ url_for('import_finish', job_id=job_id) }}">
   <div class="form-check mb-3">
-    <input class="form-check-input" type="checkbox" id="headerCheck" name="header" {% if header %}checked{% endif %}>
+    <input class="form-check-input" type="checkbox" id="headerCheck" name="header" checked>
     <label class="form-check-label" for="headerCheck">Первая строка содержит заголовки</label>
   </div>
-  {% set fields = [('order_number','Номер заказа'), ('client_name','Имя клиента'), ('phone','Телефон'), ('address','Адрес')] %}
-  {% for field,label in fields %}
-  <div class="mb-3">
-    <label class="form-label">{{ label }}</label>
-    <select class="form-select" name="{{ field }}">
-      <option value="">-- Не использовать --</option>
-      {% for col in columns %}
-      <option value="{{ col.index }}">{{ col.name }}</option>
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        {% for i in range(column_count) %}
+        <th>Колонка {{ i+1 }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in preview %}
+      <tr>
+        {% for cell in row %}
+        <td>{{ cell }}</td>
+        {% endfor %}
+      </tr>
       {% endfor %}
+    </tbody>
+  </table>
+  <h5>Назначение колонок</h5>
+  {% for i in range(column_count) %}
+  <div class="mb-3">
+    <label class="form-label">Колонка {{ i+1 }}</label>
+    <select class="form-select" name="map_{{ i }}">
+      <option value="">-- Не использовать --</option>
+      <option value="order_number">Номер заказа</option>
+      <option value="client_name">Имя клиента</option>
+      <option value="phone">Телефон</option>
+      <option value="address">Адрес</option>
+      <option value="zone">Зона</option>
+      <option value="comment">Комментарий</option>
     </select>
   </div>
   {% endfor %}
-  <button type="submit" class="btn btn-primary">Импортировать</button>
+  <button type="submit" class="btn btn-primary" id="startBtn">Начать импорт</button>
 </form>
+<script>
+  document.getElementById('startBtn').addEventListener('click', function(){
+    window.open('/import/progress/{{ job_id }}', '_blank');
+  });
+</script>
 {% endblock %}

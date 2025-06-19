@@ -355,7 +355,7 @@ def set_point():
     return jsonify({"success": True, "zone": order.zone})
 
 
-@app.route("/orders/<int:order_id>/add_comment_photo", methods=["POST"])
+main
 @login_required
 def add_comment_photo(order_id):
     if current_user.role != "courier":

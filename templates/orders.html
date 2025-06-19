@@ -65,7 +65,7 @@
                 </div>
               </td>
               <td class="coords-cell">
-                {% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary set-point-btn" data-id="{{ o.id }}">Указать точку</button>{% else %} <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}{% endif %}
+                {% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary" onclick="openMapModal({{ o.id }})">Указать точку</button>{% else %} <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}{% endif %}
               </td>
               <td class="zone-cell">{{ o.zone or 'Не определена' }}</td>
               <td>{{ o.courier.name if o.courier else '—' }}</td>
@@ -143,7 +143,7 @@
                   } %}
                   <span class="badge {{ status_class.get(o.status, 'bg-secondary') }}">{{ o.status }}</span>
                 </td>
-                <td class="coords-cell">{% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary set-point-btn" data-id="{{ o.id }}">Указать точку</button>{% endif %}{% endif %}</td>
+                <td class="coords-cell">{% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary" onclick="openMapModal({{ o.id }})">Указать точку</button>{% endif %}{% endif %}</td>
                 <td class="zone-cell">{{ o.zone or 'Не определена' }}</td>
                 <td>{{ o.courier.name if o.courier else '—' }}</td>
                 <td>{% if o.comment %}<div>{{ o.comment }}</div>{% endif %}{% if o.photo_filename %}<a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>{% endif %}</td>
@@ -173,4 +173,18 @@
     </div>
   </div>
 </div>
+<div id="mapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1050;">
+  <div style="background:#fff; margin:50px auto; max-width:600px; padding:10px;">
+    <div id="mapContainer" style="height:400px;"></div>
+    <div class="mt-2 text-end">
+      <button id="saveCoordsBtn" class="btn btn-primary">Сохранить</button>
+      <button class="btn btn-secondary" onclick="closeMapModal()">Отмена</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<script src="{{ url_for('static', filename='js/orders.js') }}"></script>
 {% endblock %}

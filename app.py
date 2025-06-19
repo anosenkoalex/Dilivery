@@ -22,6 +22,9 @@ app.config.from_object(Config)
 
 db.init_app(app)
 
+# store row-level import errors for each job
+job_errors = defaultdict(list)
+
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
@@ -660,6 +663,7 @@ def run_import(job_id, path, batch_name, col_map=None, header=True):
                     db.session.commit()
                 except Exception as exc:
                     app.logger.error('Error importing row %s: %s', row_num, exc)
+                    job_errors[job_id].append(f"Строка {row_num}: {exc}")
             job.status = "done"
         except Exception:
             app.logger.exception('Import job failed')
@@ -697,14 +701,20 @@ def import_start():
 @app.route('/import/progress/<job_id>')
 @login_required
 def import_progress(job_id):
-    return render_template('progress.html', job_id=job_id)
+    job = ImportJob.query.get_or_404(job_id)
+    return render_template('progress.html', job_id=job_id, filename=job.filename)
 
 
 @app.route('/import/status/<job_id>')
 @login_required
 def import_status(job_id):
     job = ImportJob.query.get_or_404(job_id)
-    return jsonify({'processed': job.processed, 'total_rows': job.total_rows or 0, 'status': job.status})
+    return jsonify({
+        'processed': job.processed,
+        'total_rows': job.total_rows or 0,
+        'status': job.status,
+        'errors': job_errors.get(job_id)
+    })
 
 
 @app.route('/import/result/<job_id>')

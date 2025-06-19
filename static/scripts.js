@@ -71,3 +71,49 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   });
 });
+
+let currentJobId = null;
+
+function startImportMonitor(jobId, title) {
+  currentJobId = jobId;
+  const titleEl = document.getElementById('import-title');
+  if (titleEl) {
+    titleEl.textContent = `Импорт: ${title}`;
+  }
+  pollImportStatus();
+}
+
+function pollImportStatus() {
+  if (!currentJobId) return;
+
+  fetch(`/import/status/${currentJobId}`)
+    .then(res => res.json())
+    .then(data => {
+      const pct = data.total_rows ? (data.processed / data.total_rows * 100) : 0;
+      const bar = document.getElementById('import-bar');
+      if (bar) {
+        bar.style.width = pct + '%';
+      }
+      const countEl = document.getElementById('import-count');
+      if (countEl) {
+        countEl.textContent = `${data.processed}/${data.total_rows}`;
+      }
+
+      if (data.status === 'done' || data.status === 'error') {
+        const list = document.getElementById('import-errors');
+        if (list) {
+          list.innerHTML = '';
+          if (data.errors) {
+            data.errors.forEach(e => {
+              const li = document.createElement('li');
+              li.textContent = e;
+              list.appendChild(li);
+            });
+          }
+        }
+        currentJobId = null;
+      } else {
+        setTimeout(pollImportStatus, 1500);
+      }
+    });
+}

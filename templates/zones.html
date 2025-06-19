@@ -22,14 +22,19 @@
     </tbody>
 </table>
 </div>
-<div class="map-container" style="width: 100%; height: 50vh;">
-    <div id="map" class="leaflet-map"></div>
+{% for z in zones %}
+<div class="map-container">
+    <div id="map-{{ z.id }}" class="leaflet-map"></div>
 </div>
+{% endfor %}
 {% endblock %}
 {% block scripts %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script>
-initMap([], {{ zones|tojson }});
+window.addEventListener('DOMContentLoaded', function(){
+  var zones = {{ zones|tojson }};
+  initZoneMaps(zones);
+});
 </script>
 {% endblock %}

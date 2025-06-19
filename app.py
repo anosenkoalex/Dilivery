@@ -318,6 +318,27 @@ def set_point():
     return jsonify({'success': True, 'zone': order.zone})
 
 
+@app.route('/api/orders/<int:order_id>/coordinates', methods=['POST'])
+@login_required
+def set_coordinates(order_id):
+    data = request.json or {}
+    lat = data.get('latitude')
+    lng = data.get('longitude')
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except (TypeError, ValueError):
+        return jsonify({'success': False}), 400
+    order = Order.query.get_or_404(order_id)
+    order.latitude = lat
+    order.longitude = lng
+    order.zone = detect_zone(lat, lng)
+    c = assign_courier_for_zone(order.zone)
+    order.courier = c
+    db.session.commit()
+    return jsonify({'success': True, 'zone': order.zone})
+
+
 @app.route('/orders/<int:order_id>/add_comment_photo', methods=['POST'])
 @login_required
 def add_comment_photo(order_id):

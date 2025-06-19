@@ -11,6 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from models import db, Order, DeliveryZone, Courier, User
 from config import Config
 from sqlalchemy import func
+from collections import defaultdict
 import openpyxl
 from io import BytesIO
 from geocode import geocode_address
@@ -192,15 +193,13 @@ def orders():
             query = query.filter(Order.zone.in_(zones))
         else:
             query = query.filter(db.text('0=1'))
-    orders = query.order_by(Order.id.desc()).all()
-    orders_by_zone = {}
-    orders_by_batch = {}
+    orders = query.order_by(Order.id).all()
+    orders_by_zone = defaultdict(list)
+    orders_by_batch = defaultdict(list)
     for o in orders:
         key = o.zone or 'Не определена'
-        orders_by_zone.setdefault(key, []).append(o)
+        orders_by_zone[key].append(o)
         bkey = o.import_batch or 'Без импорта'
-        if bkey not in orders_by_batch:
-            orders_by_batch[bkey] = []
         orders_by_batch[bkey].append(o)
     couriers_list = Courier.query.all()
     return render_template('orders.html', orders=orders, orders_by_zone=orders_by_zone, orders_by_batch=orders_by_batch, couriers=couriers_list)

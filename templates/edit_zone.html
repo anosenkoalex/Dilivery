@@ -14,7 +14,7 @@
     <label class="form-label">Цвет</label>
     <input type="color" class="form-control form-control-color" id="colorInput" name="color" value="{{ zone.color }}">
   </div>
-  <div id="map" style="height:400px;" class="mb-3"></div>
+  <div id="map" style="height:500px;" class="mb-3"></div>
   <input type="hidden" name="polygon" id="polygonInput">
   <button type="submit" class="btn btn-primary">Сохранить</button>
   <a href="{{ url_for('zones') }}" class="btn btn-secondary">Отмена</a>
@@ -27,13 +27,9 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
 <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
 <script>
-var existing = {{ zone.polygon_json|tojson }};
+var existing = JSON.parse({{ zone.polygon_json|tojson|safe }});
 var colorInput = document.getElementById('colorInput');
-var center = [42.8746, 74.6122];
-if (existing.length) {
-    center = [existing[0][1], existing[0][0]];
-}
-var map = L.map('map').setView(center, 13);
+var map = L.map('map').setView([42.8746, 74.6122], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'

@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 import csv
 import json
 import os
@@ -6,10 +9,7 @@ import threading
 import time
 import uuid
 
-import eventlet
 from flask_socketio import SocketIO
-
-eventlet.monkey_patch()
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from io import BytesIO
@@ -354,8 +354,6 @@ def set_point():
     db.session.commit()
     return jsonify({"success": True, "zone": order.zone})
 
-
-main
 @login_required
 def add_comment_photo(order_id):
     if current_user.role != "courier":
@@ -932,4 +930,4 @@ def stats_data():
 
 
 if __name__ == "__main__":
-    socketio.run(app, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000)

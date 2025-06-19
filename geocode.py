@@ -18,8 +18,11 @@ def geocode_address(address: str):
         "q": address,
         "format": "json",
         "limit": 1,
+        "countrycodes": "kg",
+        "viewbox": "73.2,43.5,75.4,42.2",
+        "bounded": 1,
     }
-    headers = {"User-Agent": "delivery_crm_app"}
+    headers = {"User-Agent": "delivery_crm_app (bishkek only)"}
     try:
         resp = requests.get(
             "https://nominatim.openstreetmap.org/search",

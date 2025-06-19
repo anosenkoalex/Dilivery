@@ -557,21 +557,16 @@ def import_orders_finish():
 
     optional_pattern = re.compile(r"\(optional\)|\[optional\]|optional", re.I)
     col_map = {}
-    optional_indices = {}
     for idx, col_name in enumerate(header_row):
         if not col_name:
             continue
-        optional = bool(optional_pattern.search(col_name))
         cleaned = optional_pattern.sub("", col_name).strip()
         canonical = _normalize_header(cleaned.lower())
         col_map[idx] = canonical
-        if optional:
-            optional_indices[idx] = canonical
 
     imported = 0
     errors = []
     skipped_rows = []
-    optional_skipped = set()
 
     for row_num, row in enumerate(rows[1:], start=2):
         if all((not c or str(c).strip() == '') for c in row):
@@ -579,14 +574,19 @@ def import_orders_finish():
         try:
             data = {}
             for idx, field in col_map.items():
-                if idx >= len(row) or row[idx] == '' or row[idx] is None:
-                    if idx in optional_indices:
-                        optional_skipped.add(optional_indices[idx])
-                        data[field] = None
-                        continue
-                    raise ValueError(f'Отсутствует поле {field}')
-                value = row[idx]
-                data[field] = value.strip() if isinstance(value, str) else value
+                if idx >= len(row):
+                    value = None
+                else:
+                    value = row[idx]
+                    value = value.strip() if isinstance(value, str) else value
+                    if value == '':
+                        value = None
+                data[field] = value
+
+            if not data.get('order_number'):
+                data['order_number'] = f"AUTO-{int(time.time())}"
+            if not data.get('client_name'):
+                data['client_name'] = 'Неизвестный клиент'
 
             if 'address' in data and data['address']:
                 lat, lon = geocode_address(data['address'])
@@ -612,8 +612,6 @@ def import_orders_finish():
     db.session.commit()
     print(f"[✓] В базе добавлено заказов: {imported}")
 
-    if optional_skipped:
-        flash(f"⚠ Пропущены необязательные поля: {', '.join(sorted(optional_skipped))}", "warning")
     if skipped_rows:
         flash(f"❌ Пропущены {len(skipped_rows)} строк(и) — из-за ошибок в данных. Подробности в логах.", "danger")
         app.logger.error('Skipped %s rows due to errors', len(skipped_rows))

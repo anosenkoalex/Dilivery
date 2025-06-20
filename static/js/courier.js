@@ -1,19 +1,19 @@
 window.addEventListener('DOMContentLoaded', function(){
-  const takeBtn = document.getElementById('takeBtn');
   const ordersBody = document.getElementById('ordersBody');
   const counterEl = document.getElementById('counterText');
+  let map;
 
   function updateCounter(){
-    const count = document.querySelectorAll('.order-check').length;
+    const count = document.querySelectorAll('tr[data-status="Подготовлен к доставке"]').length;
     if(counterEl) counterEl.textContent = count;
   }
 
   function updateMarker(id, status){
     const m = window.courierMarkers[id];
     if(!m) return;
-    if(status === 'out_for_delivery'){
+    if(status === 'Выдано на доставку'){
       m.setStyle({color:'orange', fillColor:'orange'});
-    }else if(status === 'delivered'){
+    }else if(status === 'Доставлен'){
       m.remove();
       delete window.courierMarkers[id];
       return;
@@ -22,33 +22,30 @@ window.addEventListener('DOMContentLoaded', function(){
     m.bindPopup(popup);
   }
 
-  takeBtn && takeBtn.addEventListener('click', function(){
-    const ids = Array.from(document.querySelectorAll('.order-check:checked')).map(cb => cb.closest('tr').dataset.id);
-    if(!ids.length) return;
+
+  function takeHandler(ev){
+    const row = ev.target.closest('tr');
+    const id = row.dataset.id;
     fetch('/courier/take', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ids: ids})
+      body: JSON.stringify({ids:[id]})
     }).then(r=>r.json()).then(data=>{
       if(data.success){
-        ids.forEach(function(id){
-          const row = document.querySelector(`tr[data-id="${id}"]`);
-          if(row){
-            row.querySelector('.order-check').remove();
-            row.querySelector('.status-cell').textContent = 'out_for_delivery';
-            const actions = row.querySelector('.actions');
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-sm btn-success deliver-btn';
-            btn.textContent = 'Доставлен';
-            btn.addEventListener('click', deliverHandler);
-            actions.appendChild(btn);
-          }
-          updateMarker(id, 'out_for_delivery');
-        });
+        row.dataset.status = 'Выдано на доставку';
+        ev.target.remove();
+        row.querySelector('.status-cell').textContent = 'Выдано на доставку';
+        const actions = row.querySelector('.actions');
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-sm btn-success deliver-btn';
+        btn.textContent = 'Доставлен';
+        btn.addEventListener('click', deliverHandler);
+        actions.appendChild(btn);
+        updateMarker(id, 'Выдано на доставку');
         updateCounter();
       }
     });
-  });
+  }
 
   function deliverHandler(ev){
     const row = ev.target.closest('tr');
@@ -56,29 +53,40 @@ window.addEventListener('DOMContentLoaded', function(){
     fetch(`/courier/delivered/${id}`, {method:'POST'}).then(r=>r.json()).then(data=>{
       if(data.success){
         row.remove();
-        updateMarker(id, 'delivered');
+        updateMarker(id, 'Доставлен');
         updateCounter();
       }
     });
   }
 
   document.querySelectorAll('.deliver-btn').forEach(btn => btn.addEventListener('click', deliverHandler));
+  document.querySelectorAll('.take-btn').forEach(btn => btn.addEventListener('click', takeHandler));
 
   // map init
   const mapEl = document.getElementById('courierMap');
-  if(mapEl){
-    const map = L.map('courierMap').setView([42.8746,74.6122], 12);
+  function initMap(){
+    if(map || !mapEl) return;
+    map = L.map('courierMap').setView([42.8746,74.6122], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
     window.courierMarkers = {};
     courierOrders.forEach(function(o){
       if(o.lat && o.lng){
-        const color = o.status === 'prepared' ? 'blue' : (o.status === 'out_for_delivery' ? 'orange' : 'green');
+        const color = o.status === 'Подготовлен к доставке' ? 'blue' : (o.status === 'Выдано на доставку' ? 'orange' : 'green');
         const m = L.circleMarker([o.lat, o.lng], {radius:8, color:color, fillColor:color, fillOpacity:1}).addTo(map);
         m.options.address = o.address;
         m.bindPopup(`<b>Заказ #${o.order_number}</b><br>${o.address}<br>${o.status}`);
         window.courierMarkers[o.id] = m;
       }
     });
+    setTimeout(() => map.invalidateSize(), 0);
+  }
+
+  const mapTab = document.getElementById('map-tab');
+  if(mapTab){
+    mapTab.addEventListener('shown.bs.tab', initMap);
+    if(mapTab.classList.contains('active')){
+      initMap();
+    }
   }
 
   updateCounter();

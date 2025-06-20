@@ -53,7 +53,7 @@
                 {% set status_class = {
                     'Складская обработка':'bg-secondary',
                     'Подготовлен к доставке':'bg-info',
-                    'Выдан':'bg-warning',
+                    'Выдано на доставку':'bg-warning',
                     'Доставлен':'bg-success'
                 } %}
                 <span class="badge {{ status_class.get(o.status, 'bg-secondary') }}">{{ o.status }}</span>
@@ -62,7 +62,7 @@
                   <form method="post" class="d-flex">
                     <input type="hidden" name="id" value="{{ o.id }}">
                     <select name="status" class="form-select form-select-sm me-2">
-                      {% for st in ['Складская обработка','Подготовлен к доставке','Выдан','Доставлен'] %}
+                      {% for st in ['Складская обработка','Подготовлен к доставке','Выдано на доставку','Доставлен'] %}
                       <option value="{{ st }}" {% if o.status==st %}selected{% endif %}>{{ st }}</option>
                       {% endfor %}
                     </select>
@@ -147,7 +147,7 @@
                   {% set status_class = {
                       'Складская обработка':'bg-secondary',
                       'Подготовлен к доставке':'bg-info',
-                      'Выдан':'bg-warning',
+                      'Выдано на доставку':'bg-warning',
                       'Доставлен':'bg-success'
                   } %}
                   <span class="badge {{ status_class.get(o.status, 'bg-secondary') }}">{{ o.status }}</span>

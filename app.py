@@ -588,11 +588,17 @@ def courier_dashboard():
         abort(403)
     orders = (
         Order.query.filter_by(courier_id=courier.id)
-        .filter(Order.status.in_(["prepared", "out_for_delivery"]))
+        .filter(
+            Order.status.in_(
+                ["Подготовлен к доставке", "Выдано на доставку"]
+            )
+        )
         .order_by(Order.id)
         .all()
     )
-    prepared_count = sum(1 for o in orders if o.status == "prepared")
+    prepared_count = sum(
+        1 for o in orders if o.status == "Подготовлен к доставке"
+    )
     all_orders = [
         {
             "id": o.id,
@@ -602,7 +608,13 @@ def courier_dashboard():
             "lng": o.longitude,
             "status": o.status,
         }
-        for o in Order.query.filter_by(courier_id=courier.id).all()
+        for o in Order.query.filter_by(courier_id=courier.id)
+        .filter(
+            Order.status.in_(
+                ["Подготовлен к доставке", "Выдано на доставку"]
+            )
+        )
+        .all()
     ]
     return render_template(
         "courier.html",
@@ -626,11 +638,11 @@ def courier_take():
         return jsonify(success=False), 400
     orders = (
         Order.query.filter(Order.id.in_(ids))
-        .filter_by(courier_id=courier.id, status="prepared")
+        .filter_by(courier_id=courier.id, status="Подготовлен к доставке")
         .all()
     )
     for o in orders:
-        o.status = "out_for_delivery"
+        o.status = "Выдано на доставку"
     db.session.commit()
     return jsonify(success=True)
 
@@ -644,9 +656,9 @@ def courier_delivered(order_id):
     order = Order.query.get_or_404(order_id)
     if not courier or order.courier_id != courier.id:
         return abort(403)
-    if order.status != "out_for_delivery":
+    if order.status != "Выдано на доставку":
         return jsonify(success=False), 400
-    order.status = "delivered"
+    order.status = "Доставлен"
     order.delivered_at = date.today()
     db.session.commit()
     return jsonify(success=True)

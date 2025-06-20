@@ -36,7 +36,7 @@
         </form>
         {% endif %}
       </summary>
-      <div class="table-responsive mt-2">
+      <div class="table-responsive card mt-2">
         <table class="table table-striped orders-table" id="ordersTable">
           <thead>
             <tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr>
@@ -132,7 +132,7 @@
         <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#zoneTable{{ loop.index }}">Свернуть / Развернуть</button>
       </div>
       <div class="collapse show" id="zoneTable{{ loop.index }}">
-        <div class="table-responsive">
+        <div class="table-responsive card">
           <table class="table table-striped mt-2 orders-table" id="ordersTable">
             <thead><tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr></thead>
             <tbody>

@@ -35,9 +35,12 @@ function initZoneMaps(zones) {
 document.addEventListener('DOMContentLoaded', function(){
   var modalEl = document.getElementById('setPointModal');
   if(!modalEl) return;
-  var map, marker, currentOrder;
+  var map, marker, currentOrder, latInputId, lonInputId;
   modalEl.addEventListener('shown.bs.modal', function(e){
-    currentOrder = e.relatedTarget.getAttribute('data-id');
+    var trg = e.relatedTarget;
+    currentOrder = trg.getAttribute('data-id');
+    latInputId = trg.getAttribute('data-input-lat');
+    lonInputId = trg.getAttribute('data-input-lon');
     var mapDiv = document.getElementById('pointMap');
     mapDiv.innerHTML = '';
     map = L.map('pointMap').setView([42.8746,74.6122],13);
@@ -55,21 +58,27 @@ document.addEventListener('DOMContentLoaded', function(){
   document.getElementById('savePointBtn').addEventListener('click', function(){
     if(!marker) return;
     var latlng = marker.getLatLng();
-    fetch('/orders/set_point', {
-      method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:new URLSearchParams({order_id: currentOrder, lat: latlng.lat, lon: latlng.lng})
-    }).then(r=>r.json()).then(function(data){
-      if(data.success){
-        var row = document.querySelector('tr[data-id="'+currentOrder+'"]');
-        if(row){
-          row.classList.remove('table-warning');
-          row.querySelector('.zone-cell').textContent = data.zone || 'Не определена';
-          row.querySelector('.coords-cell').textContent = '✔';
+    if(latInputId && lonInputId){
+      document.getElementById(latInputId).value = latlng.lat;
+      document.getElementById(lonInputId).value = latlng.lng;
+      bootstrap.Modal.getInstance(modalEl).hide();
+    }else{
+      fetch('/orders/set_point', {
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:new URLSearchParams({order_id: currentOrder, lat: latlng.lat, lon: latlng.lng})
+      }).then(r=>r.json()).then(function(data){
+        if(data.success){
+          var row = document.querySelector('tr[data-id="'+currentOrder+'"]');
+          if(row){
+            row.classList.remove('table-warning');
+            row.querySelector('.zone-cell').textContent = data.zone || 'Не определена';
+            row.querySelector('.coords-cell').textContent = '✔';
+          }
+          bootstrap.Modal.getInstance(modalEl).hide();
         }
-        bootstrap.Modal.getInstance(modalEl).hide();
-      }
-    });
+      });
+    }
   });
 });
 

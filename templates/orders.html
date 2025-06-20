@@ -97,6 +97,9 @@
                       <div class="mb-3"><label class="form-label">Адрес</label><input type="text" class="form-control" name="address" value="{{ o.address }}"></div>
                       <div class="mb-3"><label class="form-label">Заметка</label><textarea class="form-control" name="note">{{ o.note or '' }}</textarea></div>
                       <div class="mb-3"><label class="form-label">Курьер</label><select class="form-select" name="courier_id"><option value="">Авто</option>{% for c in couriers %}<option value="{{ c.id }}" {% if o.courier_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
+                      <input type="hidden" name="latitude" id="lat-{{ o.id }}" value="{{ o.latitude or '' }}">
+                      <input type="hidden" name="longitude" id="lon-{{ o.id }}" value="{{ o.longitude or '' }}">
+                      <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#setPointModal" data-input-lat="lat-{{ o.id }}" data-input-lon="lon-{{ o.id }}">{% if o.latitude and o.longitude %}Изменить точку{% else %}Указать точку{% endif %}</button>
                     </div>
                 <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="submit" class="btn btn-primary">Сохранить</button></div>
                   </form></div></div>

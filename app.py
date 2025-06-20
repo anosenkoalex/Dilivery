@@ -289,7 +289,19 @@ def update_order(order_id):
     order.phone = request.form.get("phone", order.phone)
     order.address = request.form.get("address", order.address)
     order.note = request.form.get("note", order.note)
-    if order.address != old_address:
+    lat_val = request.form.get("latitude")
+    lon_val = request.form.get("longitude")
+    manual_coords = False
+    if lat_val and lon_val:
+        try:
+            lat = float(lat_val)
+            lon = float(lon_val)
+            order.latitude = lat
+            order.longitude = lon
+            manual_coords = True
+        except ValueError:
+            flash("Некорректные координаты", "warning")
+    if order.address != old_address and not manual_coords:
         lat, lng = geocode_address(order.address)
         order.latitude = lat
         order.longitude = lng
@@ -298,6 +310,8 @@ def update_order(order_id):
         else:
             order.zone = None
             flash("Не удалось определить координаты по адресу", "warning")
+    if manual_coords and order.latitude and order.longitude:
+        order.zone = detect_zone(order.latitude, order.longitude)
     courier_val = request.form.get("courier_id")
     if courier_val:
         try:

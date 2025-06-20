@@ -7,7 +7,10 @@ document.addEventListener('DOMContentLoaded', function () {
   const socket = io();
 
   function update(data) {
-    if (!data) return;
+    if (!data) {
+      toast.hide();
+      return;
+    }
     const pct = data.total ? (data.processed / data.total) * 100 : 0;
     bar.style.width = pct + '%';
     txt.textContent = `${data.processed}/${data.total}`;

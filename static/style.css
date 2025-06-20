@@ -10,7 +10,75 @@ body { padding-top: 0; }
   margin-top: 1rem;
 }
 
+.map-responsive {
+  width: 100%;
+  height: 400px;
+}
+
+.full-screen-map {
+  height: 80vh;
+}
+
 .leaflet-map {
   width: 100%;
   height: 100%;
+}
+
+@media (max-width:768px) {
+  body { font-size: 14px; }
+  .table-responsive {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+  }
+  .table-responsive table,
+  .table-responsive thead,
+  .table-responsive tbody,
+  .table-responsive th,
+  .table-responsive td,
+  .table-responsive tr {
+    display: block;
+  }
+  .table-responsive thead tr {
+    position: absolute;
+    top: -9999px;
+    left: -9999px;
+  }
+  .table-responsive tr {
+    margin-bottom: 0.75rem;
+    border-bottom: 1px solid #ddd;
+    padding: 0.5rem;
+  }
+  .table-responsive td {
+    border: none;
+    position: relative;
+    padding-left: 50%;
+  }
+  .table-responsive td::before {
+    position: absolute;
+    top: 0;
+    left: 0.5rem;
+    width: 45%;
+    padding-right: 0.5rem;
+    white-space: nowrap;
+    font-weight: bold;
+    content: attr(data-label);
+  }
+  .table-responsive .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  .table-responsive .coords-cell,
+  .table-responsive .comment-cell {
+    display: none;
+  }
+  .map-container {
+    height: 60vh;
+  }
+  .map-responsive {
+    height: 60vh;
+  }
+  .full-screen-map {
+    height: 100vh;
+  }
 }

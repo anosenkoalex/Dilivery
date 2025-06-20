@@ -10,10 +10,10 @@
     <tbody>
     {% for z in zones %}
     <tr>
-      <td>{{ z.id }}</td>
-      <td>{{ z.name }}</td>
-      <td><span style="background:{{ z.color }};padding:2px 10px;display:inline-block;"></span> {{ z.color }}</td>
-      <td>
+      <td data-label="ID">{{ z.id }}</td>
+      <td data-label="Название">{{ z.name }}</td>
+      <td data-label="Цвет"><span style="background:{{ z.color }};padding:2px 10px;display:inline-block;"></span> {{ z.color }}</td>
+      <td data-label="Действия">
         <a class="btn btn-sm btn-primary" href="{{ url_for('edit_zone', zone_id=z.id) }}">Редактировать</a>
         <a class="btn btn-sm btn-danger" href="{{ url_for('delete_zone', zone_id=z.id) }}" onclick="return confirm('Удалить зону?');">Удалить</a>
       </td>
@@ -22,7 +22,7 @@
     </tbody>
 </table>
 </div>
-<div class="map-container">
+<div class="map-container full-screen-map">
     <div id="zones-map" class="leaflet-map"></div>
 </div>
 {% endblock %}

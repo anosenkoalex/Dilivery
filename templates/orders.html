@@ -44,12 +44,12 @@
           <tbody>
             {% for o in lst %}
             <tr data-id="{{ o.id }}" class="{% if not o.zone %}table-warning{% endif %}">
-              <td>{{ o.id }}</td>
-              <td>{{ o.order_number }}</td>
-              <td>{{ o.client_name }}</td>
-              <td>{{ o.phone }}</td>
-              <td>{{ o.address }}</td>
-              <td>
+              <td data-label="ID">{{ o.id }}</td>
+              <td data-label="№">{{ o.order_number }}</td>
+              <td data-label="Клиент">{{ o.client_name }}</td>
+              <td data-label="Телефон">{{ o.phone }}</td>
+              <td data-label="Адрес">{{ o.address }}</td>
+              <td data-label="Статус">
                 {% set status_class = {
                     'Складская обработка':'bg-secondary',
                     'Подготовлен к доставке':'bg-info',
@@ -70,12 +70,12 @@
                   </form>
                 </div>
               </td>
-              <td class="coords-cell">
+              <td class="coords-cell" data-label="Координаты">
                 {% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary" onclick="openMapModal({{ o.id }})">Указать точку</button>{% else %} <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}{% endif %}
               </td>
-              <td class="zone-cell">{{ o.zone or 'Не определена' }}</td>
-              <td class="courier-cell">{{ o.courier.name if o.courier else '—' }}</td>
-              <td>
+              <td class="zone-cell" data-label="Зона доставки">{{ o.zone or 'Не определена' }}</td>
+              <td class="courier-cell" data-label="Курьер">{{ o.courier.name if o.courier else '—' }}</td>
+              <td class="comment-cell" data-label="Комментарий / Фото">
                 {% if o.comment %}<div>{{ o.comment }}</div>{% endif %}
                 {% if o.photo_filename %}<a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>{% endif %}
                 {% if current_user.role == 'courier' %}
@@ -92,7 +92,7 @@
                 </div>
                 {% endif %}
               </td>
-              <td>
+              <td data-label="Действия">
                 <button class="btn btn-sm btn-secondary" data-bs-toggle="modal" data-bs-target="#editModal{{ o.id }}">Редактировать</button>
                 <div class="modal fade" id="editModal{{ o.id }}" tabindex="-1" aria-hidden="true">
                   <div class="modal-dialog"><div class="modal-content"><form method="post" action="{{ url_for('update_order', order_id=o.id) }}">
@@ -138,12 +138,12 @@
             <tbody>
               {% for o in lst %}
               <tr data-id="{{ o.id }}" class="{% if not o.zone %}table-warning{% endif %}">
-                <td>{{ o.id }}</td>
-                <td>{{ o.order_number }}</td>
-                <td>{{ o.client_name }}</td>
-                <td>{{ o.phone }}</td>
-                <td>{{ o.address }}</td>
-                <td>
+                <td data-label="ID">{{ o.id }}</td>
+                <td data-label="№">{{ o.order_number }}</td>
+                <td data-label="Клиент">{{ o.client_name }}</td>
+                <td data-label="Телефон">{{ o.phone }}</td>
+                <td data-label="Адрес">{{ o.address }}</td>
+                <td data-label="Статус">
                   {% set status_class = {
                       'Складская обработка':'bg-secondary',
                       'Подготовлен к доставке':'bg-info',
@@ -152,11 +152,11 @@
                   } %}
                   <span class="badge {{ status_class.get(o.status, 'bg-secondary') }}">{{ o.status }}</span>
                 </td>
-                <td class="coords-cell">{% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary" onclick="openMapModal({{ o.id }})">Указать точку</button>{% endif %}{% endif %}</td>
-                <td class="zone-cell">{{ o.zone or 'Не определена' }}</td>
-                <td class="courier-cell">{{ o.courier.name if o.courier else '—' }}</td>
-                <td>{% if o.comment %}<div>{{ o.comment }}</div>{% endif %}{% if o.photo_filename %}<a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>{% endif %}</td>
-                <td>
+                <td class="coords-cell" data-label="Координаты">{% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary" onclick="openMapModal({{ o.id }})">Указать точку</button>{% endif %}{% endif %}</td>
+                <td class="zone-cell" data-label="Зона доставки">{{ o.zone or 'Не определена' }}</td>
+                <td class="courier-cell" data-label="Курьер">{{ o.courier.name if o.courier else '—' }}</td>
+                <td class="comment-cell" data-label="Комментарий / Фото">{% if o.comment %}<div>{{ o.comment }}</div>{% endif %}{% if o.photo_filename %}<a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>{% endif %}</td>
+                <td data-label="Действия">
                   {% if current_user.role == 'admin' %}
                   <form method="post" action="{{ url_for('delete_order', order_id=o.id) }}" class="d-inline" onsubmit="return confirm('Удалить заказ?');">
                     <button type="submit" class="btn btn-sm btn-danger">🗑 Удалить</button>

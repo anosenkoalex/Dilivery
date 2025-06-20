@@ -8,10 +8,10 @@
   <tbody>
   {% for u in users %}
   <tr>
-    <td>{{ u.user.username }}</td>
-    <td>{{ u.user.role }}</td>
-    <td>{{ u.zones }}</td>
-    <td>
+    <td data-label="Username">{{ u.user.username }}</td>
+    <td data-label="Роль">{{ u.user.role }}</td>
+    <td data-label="Зона">{{ u.zones }}</td>
+    <td data-label="Действия">
       <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editUserModal-{{ u.user.id }}">Редактировать</button>
       <form method="post" action="{{ url_for('delete_user', user_id=u.user.id) }}" style="display:inline;">
         <button class="btn btn-sm btn-danger" onclick="return confirm('Удалить пользователя?');" {% if u.user.role == 'admin' %}disabled{% endif %}>Удалить</button>

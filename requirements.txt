@@ -6,3 +6,4 @@ requests
 flask-socketio
 eventlet
 flask-migrate
+pandas

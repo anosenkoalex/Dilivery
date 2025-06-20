@@ -54,7 +54,8 @@
                     'Складская обработка':'bg-secondary',
                     'Подготовлен к доставке':'bg-info',
                     'Выдано на доставку':'bg-warning',
-                    'Доставлен':'bg-success'
+                    'Доставлен':'bg-success',
+                    'Проблема':'bg-danger'
                 } %}
                 <span class="badge {{ status_class.get(o.status, 'bg-secondary') }}">{{ o.status }}</span>
                 <button class="btn btn-sm btn-link p-0 ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#statusForm{{ o.id }}">Изменить</button>
@@ -62,7 +63,7 @@
                   <form method="post" class="d-flex">
                     <input type="hidden" name="id" value="{{ o.id }}">
                     <select name="status" class="form-select form-select-sm me-2">
-                      {% for st in ['Складская обработка','Подготовлен к доставке','Выдано на доставку','Доставлен'] %}
+                      {% for st in ['Складская обработка','Подготовлен к доставке','Выдано на доставку','Доставлен','Проблема'] %}
                       <option value="{{ st }}" {% if o.status==st %}selected{% endif %}>{{ st }}</option>
                       {% endfor %}
                     </select>
@@ -148,7 +149,8 @@
                       'Складская обработка':'bg-secondary',
                       'Подготовлен к доставке':'bg-info',
                       'Выдано на доставку':'bg-warning',
-                      'Доставлен':'bg-success'
+                      'Доставлен':'bg-success',
+                      'Проблема':'bg-danger'
                   } %}
                   <span class="badge {{ status_class.get(o.status, 'bg-secondary') }}">{{ o.status }}</span>
                 </td>

@@ -24,6 +24,7 @@ class Order(db.Model):
     zone = db.Column(db.String(64))
     delivered_at = db.Column(db.Date)
     comment = db.Column(db.Text)
+    problem_comment = db.Column(db.Text)
     photo_filename = db.Column(db.String(128))
     courier_id = db.Column(db.Integer, db.ForeignKey("couriers.id"))
     courier = db.relationship("Courier", backref="orders")

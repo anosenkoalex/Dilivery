@@ -42,7 +42,7 @@ from flask_login import (
     logout_user,
 )
 from flask_migrate import Migrate
-from sqlalchemy import func, inspect
+from sqlalchemy import func, inspect, text
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
@@ -206,6 +206,8 @@ def populate_demo_data():
 
 with app.app_context():
     db.create_all()
+    with db.engine.connect() as conn:
+        conn.execute(text("ALTER TABLE orders ADD COLUMN problem_comment TEXT"))
     populate_demo_data()
 
 

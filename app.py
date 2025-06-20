@@ -207,7 +207,11 @@ def populate_demo_data():
 with app.app_context():
     db.create_all()
     with db.engine.connect() as conn:
-        conn.execute(text("ALTER TABLE orders ADD COLUMN problem_comment TEXT"))
+        table_info = conn.execute(text("PRAGMA table_info(orders)")).fetchall()
+        column_names = [col[1] for col in table_info]
+
+        if "problem_comment" not in column_names:
+            conn.execute(text("ALTER TABLE orders ADD COLUMN problem_comment TEXT"))
     populate_demo_data()
 
 

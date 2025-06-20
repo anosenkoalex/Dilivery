@@ -24,7 +24,7 @@ function openMapModal(orderId) {
 
     document.getElementById('saveCoordsBtn').onclick = () => {
         if (!modal.dataset.lat || !modal.dataset.lng) return;
-        fetch(`/api/orders/${orderId}/coordinates`, {
+        fetch(`/orders/set_coordinates/${orderId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

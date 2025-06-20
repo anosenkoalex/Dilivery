@@ -74,7 +74,7 @@
                 {% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary" onclick="openMapModal({{ o.id }})">Указать точку</button>{% else %} <a href="{{ url_for('set_coords', order_id=o.id) }}" class="btn btn-sm btn-outline-primary ms-2">Установить на карте</a>{% endif %}{% endif %}
               </td>
               <td class="zone-cell">{{ o.zone or 'Не определена' }}</td>
-              <td>{{ o.courier.name if o.courier else '—' }}</td>
+              <td class="courier-cell">{{ o.courier.name if o.courier else '—' }}</td>
               <td>
                 {% if o.comment %}<div>{{ o.comment }}</div>{% endif %}
                 {% if o.photo_filename %}<a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>{% endif %}
@@ -154,7 +154,7 @@
                 </td>
                 <td class="coords-cell">{% if o.latitude and o.longitude %}✔{% else %}✘{% if not o.zone %} <button class="btn btn-sm btn-outline-primary" onclick="openMapModal({{ o.id }})">Указать точку</button>{% endif %}{% endif %}</td>
                 <td class="zone-cell">{{ o.zone or 'Не определена' }}</td>
-                <td>{{ o.courier.name if o.courier else '—' }}</td>
+                <td class="courier-cell">{{ o.courier.name if o.courier else '—' }}</td>
                 <td>{% if o.comment %}<div>{{ o.comment }}</div>{% endif %}{% if o.photo_filename %}<a href="{{ url_for('static', filename='uploads/' + o.photo_filename) }}" target="_blank">Фото</a>{% endif %}</td>
                 <td>
                   {% if current_user.role == 'admin' %}
@@ -200,4 +200,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script src="{{ url_for('static', filename='js/orders.js') }}"></script>
+<script>
+  window.zonesData = {{ zones|tojson }};
+</script>
 {% endblock %}

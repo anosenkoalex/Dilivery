@@ -11,4 +11,14 @@ python app.py
 ```
 
 On first start demo data will be generated automatically. Configuration values can be changed in `config.py` or via environment variables.
-\nThe application uses OpenStreetMap Nominatim for geocoding. Requests are limited to one per second.
+
+If you are upgrading from previous versions remove the old SQLite database so that the new
+`ImportJob` id format is applied:
+
+```bash
+rm Dilivery/database.db
+# or in Windows PowerShell
+del Dilivery\database.db
+```
+
+The application uses OpenStreetMap Nominatim for geocoding. Requests are limited to one per second.

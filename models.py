@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.dialects.postgresql import UUID
+
 
 db = SQLAlchemy()
 
@@ -55,7 +55,7 @@ class User(db.Model, UserMixin):
 class ImportJob(db.Model):
     __tablename__ = "import_jobs"
 
-    id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid4()))
     filename = db.Column(db.String(256))
     total_rows = db.Column(db.Integer)
     processed_rows = db.Column(db.Integer, default=0)

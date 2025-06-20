@@ -1,23 +1,78 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Пользователи</h2>
-<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#createUserModal">Создать курьера</button>
+<button class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#createUserModal">Создать пользователя</button>
 <div class="table-responsive">
 <table class="table table-striped">
-  <thead><tr><th>Username</th><th>Роль</th><th>Зоны</th></tr></thead>
+  <thead><tr><th>Username</th><th>Роль</th><th>Зона</th><th></th></tr></thead>
   <tbody>
   {% for u in users %}
-  <tr><td>{{ u.user.username }}</td><td>{{ u.user.role }}</td><td>{{ u.zones }}</td></tr>
+  <tr>
+    <td>{{ u.user.username }}</td>
+    <td>{{ u.user.role }}</td>
+    <td>{{ u.zones }}</td>
+    <td>
+      <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#editUserModal-{{ u.user.id }}">Редактировать</button>
+      <form method="post" action="{{ url_for('delete_user', user_id=u.user.id) }}" style="display:inline;">
+        <button class="btn btn-sm btn-danger" onclick="return confirm('Удалить пользователя?');" {% if u.user.role == 'admin' %}disabled{% endif %}>Удалить</button>
+      </form>
+    </td>
+  </tr>
   {% endfor %}
   </tbody>
 </table>
 </div>
+
+{% for u in users %}
+<div class="modal fade" id="editUserModal-{{ u.user.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('edit_user', user_id=u.user.id) }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Редактировать пользователя</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Имя пользователя</label>
+            <input class="form-control" value="{{ u.user.username }}" disabled>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Пароль</label>
+            <input type="password" class="form-control" name="password" placeholder="Без изменения">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Роль</label>
+            <select class="form-select" name="role">
+              <option value="courier" {% if u.user.role == 'courier' %}selected{% endif %}>courier</option>
+              <option value="admin" {% if u.user.role == 'admin' %}selected{% endif %}>admin</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Зона</label>
+            <select class="form-select" name="zone">
+              <option value="" {% if not u.zones %}selected{% endif %}>--</option>
+              {% for z in zones %}
+              <option value="{{ z.name }}" {% if z.name == u.zones %}selected{% endif %}>{{ z.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endfor %}
 <div class="modal fade" id="createUserModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
       <form method="post" action="{{ url_for('create_user') }}">
         <div class="modal-header">
-          <h5 class="modal-title">Создать курьера</h5>
+          <h5 class="modal-title">Создать пользователя</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
@@ -30,8 +85,15 @@
             <input type="password" class="form-control" name="password">
           </div>
           <div class="mb-3">
-            <label class="form-label">Зоны</label>
-            <select class="form-select" name="zones" multiple>
+            <label class="form-label">Роль</label>
+            <select class="form-select" name="role">
+              <option value="courier" selected>courier</option>
+              <option value="admin">admin</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Зона</label>
+            <select class="form-select" name="zone">
               {% for z in zones %}
               <option value="{{ z.name }}">{{ z.name }}</option>
               {% endfor %}

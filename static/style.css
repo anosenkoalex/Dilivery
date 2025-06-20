@@ -160,3 +160,11 @@ body {
 .leaflet-map {
   border-radius: 12px;
 }
+
+/* Charts */
+.chart-wrapper {
+  overflow-x: auto;
+}
+.chart-wrapper canvas {
+  display: block;
+}

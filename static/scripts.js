@@ -71,12 +71,36 @@ document.addEventListener('DOMContentLoaded', function(){
     }).addTo(map);
     marker = null;
     if(zoom === 16){
-      marker = L.marker([startLat,startLon]).addTo(map);
+      marker = L.marker([startLat,startLon], {draggable: true}).addTo(map);
+      marker.on('dragend', function(ev){ marker = ev.target; });
     }
     map.on('click', function(ev){
       if(marker) map.removeLayer(marker);
-      marker = L.marker(ev.latlng).addTo(map);
+      marker = L.marker(ev.latlng, {draggable: true}).addTo(map);
+      marker.on('dragend', function(ev){ marker = ev.target; });
     });
+    var searchInput = document.getElementById('addressSearch');
+    if(searchInput){
+      searchInput.value = '';
+      searchInput.onkeydown = function(ev){
+        if(ev.key === 'Enter'){
+          ev.preventDefault();
+          const query = ev.target.value;
+          fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+            .then(res=>res.json())
+            .then(data=>{
+              if(data && data.length){
+                const lat = parseFloat(data[0].lat);
+                const lon = parseFloat(data[0].lon);
+                map.setView([lat,lon],16);
+                if(marker) map.removeLayer(marker);
+                marker = L.marker([lat,lon], {draggable: true}).addTo(map);
+                marker.on('dragend', function(ev){ marker = ev.target; });
+              }
+            });
+        }
+      };
+    }
     setTimeout(function(){ map.invalidateSize(); }, 0);
   });
   document.getElementById('savePointBtn').addEventListener('click', function(){

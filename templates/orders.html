@@ -171,13 +171,17 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header"><h5 class="modal-title">Установить координаты</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body"><div id="pointMap" style="height:400px;"></div></div>
+      <div class="modal-body">
+        <input id="addressSearch" type="text" class="form-control mb-2" placeholder="Введите адрес (например, Шопокова 98)" />
+        <div id="pointMap" style="height:400px;"></div>
+      </div>
       <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button><button type="button" class="btn btn-primary" id="savePointBtn">Сохранить</button></div>
     </div>
   </div>
 </div>
 <div id="mapModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1050;">
   <div style="background:#fff; margin:50px auto; max-width:600px; padding:10px;">
+    <input id="addressSearchModal" type="text" class="form-control mb-2" placeholder="Введите адрес (например, Шопокова 98)" />
     <div id="mapContainer" style="height:400px;"></div>
     <div class="mt-2 text-end">
       <button id="saveCoordsBtn" class="btn btn-primary">Сохранить</button>

@@ -23,6 +23,7 @@ def upgrade():
                existing_type=sa.NUMERIC(),
                type_=sa.UUID(),
                existing_nullable=False)
+        batch_op.add_column(sa.Column('processed_rows', sa.Integer(), server_default='0'))
 
     # ### end Alembic commands ###
 
@@ -34,5 +35,6 @@ def downgrade():
                existing_type=sa.UUID(),
                type_=sa.NUMERIC(),
                existing_nullable=False)
+        batch_op.drop_column('processed_rows')
 
     # ### end Alembic commands ###

@@ -411,7 +411,10 @@ def delete_batch():
 @app.route("/orders/delete_table", methods=["POST"])
 @login_required
 def delete_table():
-    batch = request.form["batch"]
+    batch = request.form.get("batch")
+    if not batch:
+        flash("Не передан параметр batch", "warning")
+        return redirect(url_for("orders"))
     Order.query.filter_by(import_batch=batch).delete()
     db.session.commit()
     flash(f"Таблица «{batch}» удалена", "success")
@@ -803,14 +806,14 @@ def api_import_active():
 @app.route("/import/progress/<job_id>")
 @login_required
 def import_progress(job_id):
-    job = ImportJob.query.get_or_404(job_id)
+    job = ImportJob.query.get_or_404(uuid.UUID(job_id))
     return render_template("progress.html", job_id=job_id, filename=job.filename)
 
 
 @app.route("/import/status/<job_id>")
 @login_required
 def import_status(job_id):
-    job = ImportJob.query.get_or_404(job_id)
+    job = ImportJob.query.get_or_404(uuid.UUID(job_id))
     return jsonify(
         {
             "processed": job.processed_rows,
@@ -824,7 +827,7 @@ def import_status(job_id):
 @app.route("/import/result/<job_id>")
 @login_required
 def import_result(job_id):
-    job = ImportJob.query.get_or_404(job_id)
+    job = ImportJob.query.get_or_404(uuid.UUID(job_id))
     return render_template("import_result.html", count=job.processed_rows)
 
 
@@ -855,7 +858,7 @@ def import_upload():
 @app.route("/import/mapping/<job_id>")
 @admin_required
 def import_mapping(job_id):
-    job = ImportJob.query.get_or_404(job_id)
+    job = ImportJob.query.get_or_404(uuid.UUID(job_id))
     path = os.path.join(app.config["UPLOAD_FOLDER"], job.filename)
     rows = read_file_rows(path)
     preview = rows[:5]
@@ -868,7 +871,7 @@ def import_mapping(job_id):
 @app.route("/import/finish/<job_id>", methods=["POST"])
 @admin_required
 def import_finish(job_id):
-    job = ImportJob.query.get_or_404(job_id)
+    job = ImportJob.query.get_or_404(uuid.UUID(job_id))
     path = os.path.join(app.config["UPLOAD_FOLDER"], job.filename)
     batch_name = os.path.splitext(job.filename)[0]
     header = bool(request.form.get("header"))

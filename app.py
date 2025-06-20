@@ -546,11 +546,15 @@ def users():
 @app.route("/users/create", methods=["POST"])
 @admin_required
 def create_user():
-    username = request.form.get("username")
-    password = request.form.get("password")
-    zones = request.form.getlist("zones")
+    username = request.form.get("username") or ""
+    password = request.form.get("password") or ""
+    role = request.form.get("role", "courier")
+    zone = request.form.get("zone") or ""
     if not username or not password:
         flash("Введите имя и пароль", "warning")
+        return redirect(url_for("users"))
+    if role == "courier" and not zone:
+        flash("Выберите зону", "warning")
         return redirect(url_for("users"))
     if User.query.filter_by(username=username).first():
         flash("Такой пользователь уже существует", "warning")
@@ -558,13 +562,58 @@ def create_user():
     user = User(
         username=username,
         password_hash=generate_password_hash(password),
-        role="courier",
+        role=role,
     )
-    courier = Courier(name=username, telegram=f"@{username}", zones=", ".join(zones))
     db.session.add(user)
-    db.session.add(courier)
+    if role == "courier":
+        courier = Courier(name=username, telegram=f"@{username}", zones=zone)
+        db.session.add(courier)
     db.session.commit()
-    flash("Курьер создан", "success")
+    flash("Пользователь создан", "success")
+    return redirect(url_for("users"))
+
+
+@app.route("/users/<int:user_id>/edit", methods=["POST"])
+@admin_required
+def edit_user(user_id):
+    user = User.query.get_or_404(user_id)
+    password = request.form.get("password") or ""
+    role = request.form.get("role", user.role)
+    zone = request.form.get("zone") or ""
+    if role == "courier" and not zone:
+        flash("Выберите зону", "warning")
+        return redirect(url_for("users"))
+    if password:
+        user.password_hash = generate_password_hash(password)
+    user.role = role
+    courier = Courier.query.filter_by(telegram=f"@{user.username}").first()
+    if role == "courier":
+        if not courier:
+            courier = Courier(name=user.username, telegram=f"@{user.username}")
+            db.session.add(courier)
+        courier.zones = zone
+    elif courier:
+        Order.query.filter_by(courier_id=courier.id).update({"courier_id": None})
+        db.session.delete(courier)
+    db.session.commit()
+    flash("Пользователь обновлён", "success")
+    return redirect(url_for("users"))
+
+
+@app.route("/users/<int:user_id>/delete", methods=["POST"])
+@admin_required
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+    if user.role == "admin":
+        flash("Нельзя удалить администратора", "warning")
+        return redirect(url_for("users"))
+    courier = Courier.query.filter_by(telegram=f"@{user.username}").first()
+    if courier:
+        Order.query.filter_by(courier_id=courier.id).update({"courier_id": None})
+        db.session.delete(courier)
+    db.session.delete(user)
+    db.session.commit()
+    flash("Пользователь удалён", "success")
     return redirect(url_for("users"))
 
 

@@ -54,12 +54,25 @@ document.addEventListener('DOMContentLoaded', function(){
       map.remove();
     }
     mapDiv.innerHTML = '';
-    map = L.map('pointMap').setView([42.8746,74.6122],13);
+    var startLat = 42.8746, startLon = 74.6122, zoom = 13;
+    if(latInputId && lonInputId){
+      var latEl = document.getElementById(latInputId);
+      var lonEl = document.getElementById(lonInputId);
+      if(latEl && latEl.value && lonEl && lonEl.value){
+        startLat = parseFloat(latEl.value);
+        startLon = parseFloat(lonEl.value);
+        zoom = 16;
+      }
+    }
+    map = L.map('pointMap').setView([startLat,startLon], zoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom:19,
       attribution:'&copy; OpenStreetMap contributors'
     }).addTo(map);
     marker = null;
+    if(zoom === 16){
+      marker = L.marker([startLat,startLon]).addTo(map);
+    }
     map.on('click', function(ev){
       if(marker) map.removeLayer(marker);
       marker = L.marker(ev.latlng).addTo(map);

@@ -43,6 +43,7 @@
 </form>
 <script>
   document.getElementById('startBtn').addEventListener('click', function(){
+    sessionStorage.removeItem('import_hidden');
     window.open('/import/progress/{{ job_id }}', '_blank');
   });
 </script>

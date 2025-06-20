@@ -1,9 +1,13 @@
 import eventlet
+
 eventlet.monkey_patch()
 
 import os
+
 if os.environ.get("FLASK_RUN_FROM_CLI") and not os.environ.get("ALLOW_FLASK_CLI"):
-    raise RuntimeError("❌ Не запускай через 'flask run'. Используй только 'python app.py'.")
+    raise RuntimeError(
+        "❌ Не запускай через 'flask run'. Используй только 'python app.py'."
+    )
 
 import csv
 import json
@@ -276,12 +280,23 @@ def orders():
         bkey = o.import_batch or "Без импорта"
         orders_by_batch[bkey].append(o)
     couriers_list = Courier.query.all()
+    zones_list = DeliveryZone.query.all()
+    zones_dict = [
+        {
+            "id": z.id,
+            "name": z.name,
+            "color": z.color,
+            "polygon": json.loads(z.polygon_json),
+        }
+        for z in zones_list
+    ]
     return render_template(
         "orders.html",
         orders=orders,
         orders_by_zone=orders_by_zone,
         orders_by_batch=orders_by_batch,
         couriers=couriers_list,
+        zones=zones_dict,
     )
 
 
@@ -354,7 +369,17 @@ def set_coords(order_id):
         db.session.commit()
         flash("Координаты сохранены", "success")
         return redirect(url_for("orders"))
-    return render_template("set_coords.html", order=order)
+    zones_list = DeliveryZone.query.all()
+    zones_dict = [
+        {
+            "id": z.id,
+            "name": z.name,
+            "color": z.color,
+            "polygon": json.loads(z.polygon_json),
+        }
+        for z in zones_list
+    ]
+    return render_template("set_coords.html", order=order, zones=zones_dict)
 
 
 @app.route("/orders/set_point", methods=["POST"])
@@ -377,7 +402,14 @@ def set_point():
     db.session.add(order)
     order.courier = c
     db.session.commit()
-    return jsonify({"success": True, "zone": order.zone})
+    return jsonify(
+        {
+            "success": True,
+            "zone": order.zone,
+            "courier": order.courier.name if order.courier else None,
+        }
+    )
+
 
 @app.route("/api/orders/<int:order_id>/coordinates", methods=["POST"])
 @login_required
@@ -398,13 +430,20 @@ def api_set_coordinates(order_id):
     db.session.add(order)
     order.courier = courier
     db.session.commit()
-    return jsonify({"success": True, "zone": order.zone})
+    return jsonify(
+        {
+            "success": True,
+            "zone": order.zone,
+            "courier": order.courier.name if order.courier else None,
+        }
+    )
 
 
 @app.route("/orders/set_coordinates/<int:order_id>", methods=["POST"])
 @login_required
 def set_coordinates(order_id):
     return api_set_coordinates(order_id)
+
 
 @login_required
 def add_comment_photo(order_id):
@@ -588,17 +627,11 @@ def courier_dashboard():
         abort(403)
     orders = (
         Order.query.filter_by(courier_id=courier.id)
-        .filter(
-            Order.status.in_(
-                ["Подготовлен к доставке", "Выдано на доставку"]
-            )
-        )
+        .filter(Order.status.in_(["Подготовлен к доставке", "Выдано на доставку"]))
         .order_by(Order.id)
         .all()
     )
-    prepared_count = sum(
-        1 for o in orders if o.status == "Подготовлен к доставке"
-    )
+    prepared_count = sum(1 for o in orders if o.status == "Подготовлен к доставке")
     all_orders = [
         {
             "id": o.id,
@@ -609,11 +642,7 @@ def courier_dashboard():
             "status": o.status,
         }
         for o in Order.query.filter_by(courier_id=courier.id)
-        .filter(
-            Order.status.in_(
-                ["Подготовлен к доставке", "Выдано на доставку"]
-            )
-        )
+        .filter(Order.status.in_(["Подготовлен к доставке", "Выдано на доставку"]))
         .all()
     ]
     return render_template(

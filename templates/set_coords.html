@@ -14,11 +14,24 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script>
+var zones = {{ zones|tojson }};
+window.zonesData = zones;
 var map = L.map('map').setView([42.8746, 74.6122], 13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
+var group = L.featureGroup().addTo(map);
+zones.forEach(function(z){
+    if(z.polygon && z.polygon.length){
+        var poly = L.polygon(z.polygon.map(function(p){return [p[1], p[0]];}), {color:z.color});
+        poly.bindPopup(z.name);
+        group.addLayer(poly);
+    }
+});
+if(group.getLayers().length){
+    map.fitBounds(group.getBounds());
+}
 var marker = null;
 function updateMarker(latlng) {
     if (marker) {

@@ -69,6 +69,19 @@ document.addEventListener('DOMContentLoaded', function(){
       maxZoom:19,
       attribution:'&copy; OpenStreetMap contributors'
     }).addTo(map);
+    var group = L.featureGroup().addTo(map);
+    if(window.zonesData){
+      window.zonesData.forEach(function(z){
+        if(z.polygon && z.polygon.length){
+          var poly = L.polygon(z.polygon.map(function(p){return [p[1], p[0]];}), {color:z.color});
+          poly.bindPopup(z.name);
+          group.addLayer(poly);
+        }
+      });
+      if(group.getLayers().length){
+        map.fitBounds(group.getBounds());
+      }
+    }
     marker = null;
     if(zoom === 16){
       marker = L.marker([startLat,startLon], {draggable: true}).addTo(map);
@@ -122,6 +135,8 @@ document.addEventListener('DOMContentLoaded', function(){
             row.classList.remove('table-warning');
             row.querySelector('.zone-cell').textContent = data.zone || 'Не определена';
             row.querySelector('.coords-cell').textContent = '✔';
+            var ccell = row.querySelector('.courier-cell');
+            if(ccell) ccell.textContent = data.courier || '—';
           }
           bootstrap.Modal.getInstance(modalEl).hide();
         }

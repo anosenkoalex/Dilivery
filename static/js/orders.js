@@ -35,6 +35,19 @@ function openMapModal(orderId) {
     container.innerHTML = '';
     window.orderMap = L.map('mapContainer').setView([42.87, 74.6], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.orderMap);
+    const group = L.featureGroup().addTo(window.orderMap);
+    if (window.zonesData) {
+        window.zonesData.forEach(z => {
+            if (z.polygon && z.polygon.length) {
+                const poly = L.polygon(z.polygon.map(p => [p[1], p[0]]), {color: z.color});
+                poly.bindPopup(z.name);
+                group.addLayer(poly);
+            }
+        });
+        if (group.getLayers().length) {
+            window.orderMap.fitBounds(group.getBounds());
+        }
+    }
     let marker;
     window.orderMap.on('click', function(e) {
         if (marker) window.orderMap.removeLayer(marker);
@@ -98,6 +111,8 @@ function openMapModal(orderId) {
                     if (ccell) ccell.textContent = '✔';
                     const zcell = row.querySelector('.zone-cell');
                     if (zcell && 'zone' in data) zcell.textContent = data.zone || 'Не определена';
+                    const courierCell = row.querySelector('.courier-cell');
+                    if (courierCell && 'courier' in data) courierCell.textContent = data.courier || '—';
                 }
             }
             closeMapModal();

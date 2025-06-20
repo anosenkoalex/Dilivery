@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Отчёты</h2>
+<form id="reportRange" class="row g-2 mb-3">
+  <div class="col-auto">
+    <label class="form-label">С</label>
+    <input type="date" id="repStart" class="form-control" value="{{ start }}">
+  </div>
+  <div class="col-auto">
+    <label class="form-label">По</label>
+    <input type="date" id="repEnd" class="form-control" value="{{ end }}">
+  </div>
+  <div class="col-auto align-self-end">
+    <button class="btn btn-success me-2" id="downloadDeliveredBtn">Скачать доставленные</button>
+    <button class="btn btn-danger" id="downloadProblemBtn">Скачать проблемные</button>
+  </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+ document.addEventListener('DOMContentLoaded', function(){
+   function download(type){
+     const s = document.getElementById('repStart').value;
+     const e = document.getElementById('repEnd').value;
+     const params = new URLSearchParams();
+     if(s) params.append('start', s);
+     if(e) params.append('end', e);
+     window.location = `/reports/export/${type}?` + params.toString();
+   }
+   document.getElementById('downloadDeliveredBtn').addEventListener('click', function(ev){
+     ev.preventDefault();
+     download('delivered');
+   });
+   document.getElementById('downloadProblemBtn').addEventListener('click', function(ev){
+     ev.preventDefault();
+     download('problem');
+   });
+ });
+</script>
+{% endblock %}

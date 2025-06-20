@@ -627,7 +627,7 @@ def courier_dashboard():
         abort(403)
     orders = (
         Order.query.filter_by(courier_id=courier.id)
-        .filter(Order.status.in_(["Подготовлен к доставке", "Выдано на доставку"]))
+        .filter(Order.status.in_(["Подготовлен к доставке", "Выдано на доставку", "Проблема"]))
         .order_by(Order.id)
         .all()
     )
@@ -647,7 +647,7 @@ def courier_dashboard():
             "status": o.status,
         }
         for o in Order.query.filter_by(courier_id=courier.id)
-        .filter(Order.status.in_(["Подготовлен к доставке", "Выдано на доставку"]))
+        .filter(Order.status.in_(["Подготовлен к доставке", "Выдано на доставку", "Проблема"]))
         .all()
     ]
     return render_template(
@@ -713,6 +713,25 @@ def courier_delivered(order_id):
         return jsonify(success=False), 400
     order.status = "Доставлен"
     order.delivered_at = date.today()
+    db.session.commit()
+    return jsonify(success=True)
+
+
+@app.route("/courier/problem/<int:order_id>", methods=["POST"])
+@login_required
+def courier_problem(order_id):
+    if current_user.role != "courier":
+        return abort(403)
+    courier = Courier.query.filter_by(telegram=f"@{current_user.username}").first()
+    order = Order.query.get_or_404(order_id)
+    if not courier or order.courier_id != courier.id:
+        return abort(403)
+    if order.status != "Выдано на доставку":
+        return jsonify(success=False), 400
+    data = request.get_json() or {}
+    comment = data.get("comment") or ""
+    order.status = "Проблема"
+    order.problem_comment = comment
     db.session.commit()
     return jsonify(success=True)
 
@@ -847,6 +866,70 @@ def export_history():
     wb.save(buf)
     buf.seek(0)
     filename = f"dostavki_{date.today().isoformat()}.xlsx"
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@app.route("/reports")
+@admin_required
+def reports():
+    today = date.today()
+    month_start = today.replace(day=1)
+    start = request.args.get("start", month_start.isoformat())
+    end = request.args.get("end", today.isoformat())
+    return render_template("reports.html", start=start, end=end)
+
+
+@app.route("/reports/export/<string:rtype>")
+@admin_required
+def export_report(rtype):
+    start = request.args.get("start")
+    end = request.args.get("end")
+    q = Order.query
+    if start:
+        try:
+            start_d = datetime.fromisoformat(start).date()
+            q = q.filter((Order.delivered_at == None) | (Order.delivered_at >= start_d))
+        except ValueError:
+            pass
+    if end:
+        try:
+            end_d = datetime.fromisoformat(end).date()
+            q = q.filter((Order.delivered_at == None) | (Order.delivered_at <= end_d))
+        except ValueError:
+            pass
+    if rtype == "delivered":
+        q = q.filter_by(status="Доставлен")
+    elif rtype == "problem":
+        q = q.filter_by(status="Проблема")
+    elif rtype != "all":
+        abort(400)
+    orders = q.all()
+    data = []
+    for o in orders:
+        row = {
+            "№ заказа": o.order_number,
+            "Имя": o.client_name,
+            "Телефон": o.phone,
+            "Адрес": o.address,
+            "Дата": o.delivered_at.isoformat() if o.delivered_at else "",
+            "Зона": o.zone or "",
+            "Статус": o.status,
+        }
+        if rtype in {"problem", "all"}:
+            row["Комментарий"] = o.problem_comment or ""
+        data.append(row)
+    import pandas as pd
+
+    df = pd.DataFrame(data)
+    buf = BytesIO()
+    df.to_excel(buf, index=False)
+    buf.seek(0)
+    filename = f"report_{rtype}_{date.today().isoformat()}.xlsx"
     return send_file(
         buf,
         as_attachment=True,
@@ -1134,44 +1217,28 @@ def stats():
 @app.route("/stats/data")
 @admin_required
 def stats_data():
-    period = request.args.get("period", "today")
-    zone = request.args.get("zone")
-    courier_id = request.args.get("courier")
+    start = request.args.get("start")
+    end = request.args.get("end")
 
-    q = Order.query.filter_by(status="Доставлен")
-    today = date.today()
-    if period == "today":
-        start = today
-    elif period == "week":
-        start = today - timedelta(days=7)
-    elif period == "month":
-        start = today - timedelta(days=30)
-    else:
-        start = None
+    base_q = Order.query
     if start:
-        q = q.filter(Order.delivered_at >= start)
-    if zone:
-        q = q.filter(Order.zone == zone)
-    if courier_id:
-        courier = Courier.query.get(int(courier_id))
-        if courier and courier.zones:
-            zones = [z.strip() for z in courier.zones.split(",") if z.strip()]
-            if zones:
-                q = q.filter(Order.zone.in_(zones))
-
-    daily = (
-        q.with_entities(Order.delivered_at, func.count())
-        .group_by(Order.delivered_at)
-        .order_by(Order.delivered_at)
-        .all()
-    )
-    zone_data = q.with_entities(Order.zone, func.count()).group_by(Order.zone).all()
+        try:
+            start_d = datetime.fromisoformat(start).date()
+            base_q = base_q.filter((Order.delivered_at == None) | (Order.delivered_at >= start_d))
+        except ValueError:
+            pass
+    if end:
+        try:
+            end_d = datetime.fromisoformat(end).date()
+            base_q = base_q.filter((Order.delivered_at == None) | (Order.delivered_at <= end_d))
+        except ValueError:
+            pass
 
     resp = {
-        "dates": [d[0].isoformat() if d[0] else "" for d in daily],
-        "counts": [d[1] for d in daily],
-        "zone_labels": [z[0] or "—" for z in zone_data],
-        "zone_counts": [z[1] for z in zone_data],
+        "prepared": base_q.filter(Order.status == "Подготовлен к доставке").count(),
+        "out_for_delivery": base_q.filter(Order.status == "Выдано на доставку").count(),
+        "delivered": base_q.filter(Order.status == "Доставлен").count(),
+        "problem": base_q.filter(Order.status == "Проблема").count(),
     }
     return jsonify(resp)
 

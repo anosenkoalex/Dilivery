@@ -26,10 +26,44 @@ function openMapModal(orderId) {
     let marker;
     window.orderMap.on('click', function(e) {
         if (marker) window.orderMap.removeLayer(marker);
-        marker = L.marker(e.latlng).addTo(window.orderMap);
-        modal.dataset.lat = e.latlng.lat;
-        modal.dataset.lng = e.latlng.lng;
+        marker = L.marker(e.latlng, {draggable: true}).addTo(window.orderMap);
+        const pos = e.latlng;
+        modal.dataset.lat = pos.lat;
+        modal.dataset.lng = pos.lng;
+        marker.on('dragend', function(ev){
+            const p = ev.target.getLatLng();
+            modal.dataset.lat = p.lat;
+            modal.dataset.lng = p.lng;
+        });
     });
+    const searchInput = document.getElementById('addressSearchModal');
+    if(searchInput){
+        searchInput.value = '';
+        searchInput.onkeydown = function(ev){
+            if(ev.key === 'Enter'){
+                ev.preventDefault();
+                const query = ev.target.value;
+                fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                    .then(res=>res.json())
+                    .then(data=>{
+                        if(data && data.length){
+                            const lat = parseFloat(data[0].lat);
+                            const lon = parseFloat(data[0].lon);
+                            window.orderMap.setView([lat,lon],16);
+                            if(marker) window.orderMap.removeLayer(marker);
+                            marker = L.marker([lat,lon], {draggable:true}).addTo(window.orderMap);
+                            modal.dataset.lat = lat;
+                            modal.dataset.lng = lon;
+                            marker.on('dragend', function(ev){
+                                const p = ev.target.getLatLng();
+                                modal.dataset.lat = p.lat;
+                                modal.dataset.lng = p.lng;
+                            });
+                        }
+                    });
+            }
+        };
+    }
     setTimeout(() => { window.orderMap.invalidateSize(); }, 0);
 
     document.getElementById('saveCoordsBtn').onclick = () => {

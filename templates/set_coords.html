@@ -2,6 +2,7 @@
 {% block content %}
 <h2>Установка координат для заказа {{ order.order_number }}</h2>
 <form method="post">
+  <input id="addressSearch" type="text" class="form-control mb-2" placeholder="Введите адрес (например, Шопокова 98)" />
   <div id="map" style="height:400px;" class="mb-3"></div>
   <input type="hidden" name="latitude" id="latitude">
   <input type="hidden" name="longitude" id="longitude">
@@ -23,9 +24,14 @@ function updateMarker(latlng) {
     if (marker) {
         map.removeLayer(marker);
     }
-    marker = L.marker(latlng).addTo(map);
+    marker = L.marker(latlng, {draggable: true}).addTo(map);
     document.getElementById('latitude').value = latlng.lat;
     document.getElementById('longitude').value = latlng.lng;
+    marker.on('dragend', function(ev){
+        const pos = ev.target.getLatLng();
+        document.getElementById('latitude').value = pos.lat;
+        document.getElementById('longitude').value = pos.lng;
+    });
     document.getElementById('saveBtn').disabled = false;
 }
 var initLat = {{ order.latitude or 'null' }};
@@ -37,6 +43,23 @@ if (initLat && initLng) {
 }
 map.on('click', function(e){
     updateMarker(e.latlng);
+});
+
+document.getElementById('addressSearch').addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+        e.preventDefault();
+        const query = e.target.value;
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+            .then(res => res.json())
+            .then(data => {
+                if(data && data.length > 0){
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+                    map.setView([lat, lon], 16);
+                    updateMarker(L.latLng(lat, lon));
+                }
+            });
+    }
 });
 </script>
 {% endblock %}

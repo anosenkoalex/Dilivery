@@ -19,18 +19,25 @@ function initMap(orders, zones) {
   });
 }
 
-function initZoneMaps(zones) {
-  zones.forEach(function(z){
-    const map = L.map('map-' + z.id).setView([42.8746, 74.6122], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+function initZonesMap(zones) {
+  const map = L.map('zones-map').setView([42.8746, 74.6122], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  var group = L.featureGroup().addTo(map);
+  zones.forEach(function(z) {
     if (z.polygon && z.polygon.length) {
-      var poly = L.polygon(z.polygon.map(function(p){ return [p[1], p[0]]; }), {color: z.color}).addTo(map);
-      map.fitBounds(poly.getBounds());
+      var poly = L.polygon(z.polygon.map(function(p){ return [p[1], p[0]]; }), {color: z.color});
+      poly.bindPopup(z.name);
+      group.addLayer(poly);
     }
   });
+
+  if (group.getLayers().length) {
+    map.fitBounds(group.getBounds());
+  }
 }
 document.addEventListener('DOMContentLoaded', function(){
   var modalEl = document.getElementById('setPointModal');

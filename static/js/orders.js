@@ -10,6 +10,18 @@ function closeMapModal() {
     }
 }
 
+document.addEventListener('DOMContentLoaded', function () {
+    const searchInput = document.getElementById('orderSearch');
+    if (!searchInput) return;
+    searchInput.addEventListener('input', function () {
+        const value = this.value.toLowerCase();
+        document.querySelectorAll('.orders-table tbody tr').forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(value) ? '' : 'none';
+        });
+    });
+});
+
 function openMapModal(orderId) {
     const modal = document.getElementById('mapModal');
     if (!modal) return;

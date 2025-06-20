@@ -4,6 +4,12 @@
 {% if current_user.role == 'admin' %}
 <a class="btn btn-sm btn-success mb-3" href="{{ url_for('import_upload') }}">Импорт заказов</a>
 {% endif %}
+<input
+  type="text"
+  id="orderSearch"
+  placeholder="Поиск по заказам..."
+  class="form-control mb-3"
+/>
 {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}
     <ul class="flashes">
@@ -31,7 +37,7 @@
         {% endif %}
       </summary>
       <div class="table-responsive mt-2">
-        <table class="table table-striped">
+        <table class="table table-striped orders-table" id="ordersTable">
           <thead>
             <tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr>
           </thead>
@@ -127,7 +133,7 @@
       </div>
       <div class="collapse show" id="zoneTable{{ loop.index }}">
         <div class="table-responsive">
-          <table class="table table-striped mt-2">
+          <table class="table table-striped mt-2 orders-table" id="ordersTable">
             <thead><tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr></thead>
             <tbody>
               {% for o in lst %}

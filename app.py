@@ -22,6 +22,7 @@ from flask import (
     Flask,
     flash,
     jsonify,
+    abort,
     redirect,
     render_template,
     request,
@@ -207,6 +208,8 @@ with app.app_context():
 @app.route("/")
 def index():
     if current_user.is_authenticated:
+        if current_user.role == "courier":
+            return redirect(url_for("courier_dashboard"))
         return redirect(url_for("orders"))
     else:
         return redirect(url_for("login"))
@@ -221,6 +224,8 @@ def login():
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
             flash("Вы вошли в систему", "success")
+            if user.role == "courier":
+                return redirect(url_for("courier_dashboard"))
             return redirect(url_for("orders"))
         flash("Неверные логин или пароль", "warning")
     return render_template("login.html")
@@ -237,6 +242,8 @@ def logout():
 @app.route("/orders", methods=["GET", "POST"])
 @login_required
 def orders():
+    if current_user.role == "courier":
+        return redirect(url_for("courier_dashboard"))
     if request.method == "POST":
         order_id = request.form["id"]
         status = request.form["status"]
@@ -569,6 +576,80 @@ def delete_zone(zone_id):
 def couriers():
     couriers = Courier.query.all()
     return render_template("couriers.html", couriers=couriers)
+
+
+@app.route("/courier")
+@login_required
+def courier_dashboard():
+    if current_user.role != "courier":
+        return redirect(url_for("orders"))
+    courier = Courier.query.filter_by(telegram=f"@{current_user.username}").first()
+    if not courier:
+        abort(403)
+    orders = (
+        Order.query.filter_by(courier_id=courier.id)
+        .filter(Order.status.in_(["prepared", "out_for_delivery"]))
+        .order_by(Order.id)
+        .all()
+    )
+    prepared_count = sum(1 for o in orders if o.status == "prepared")
+    all_orders = [
+        {
+            "id": o.id,
+            "order_number": o.order_number,
+            "address": o.address,
+            "lat": o.latitude,
+            "lng": o.longitude,
+            "status": o.status,
+        }
+        for o in Order.query.filter_by(courier_id=courier.id).all()
+    ]
+    return render_template(
+        "courier.html",
+        orders=orders,
+        prepared_count=prepared_count,
+        all_orders=all_orders,
+    )
+
+
+@app.route("/courier/take", methods=["POST"])
+@login_required
+def courier_take():
+    if current_user.role != "courier":
+        return abort(403)
+    courier = Courier.query.filter_by(telegram=f"@{current_user.username}").first()
+    if not courier:
+        return abort(403)
+    data = request.get_json() or {}
+    ids = data.get("ids", [])
+    if not isinstance(ids, list):
+        return jsonify(success=False), 400
+    orders = (
+        Order.query.filter(Order.id.in_(ids))
+        .filter_by(courier_id=courier.id, status="prepared")
+        .all()
+    )
+    for o in orders:
+        o.status = "out_for_delivery"
+    db.session.commit()
+    return jsonify(success=True)
+
+
+@app.route("/courier/delivered/<int:order_id>", methods=["POST"])
+@login_required
+def courier_delivered(order_id):
+    if current_user.role != "courier":
+        return abort(403)
+    courier = Courier.query.filter_by(telegram=f"@{current_user.username}").first()
+    order = Order.query.get_or_404(order_id)
+    if not courier or order.courier_id != courier.id:
+        return abort(403)
+    if order.status != "out_for_delivery":
+        return jsonify(success=False), 400
+    order.status = "delivered"
+    order.delivered_at = date.today()
+    db.session.commit()
+    return jsonify(success=True)
 
 
 @app.route("/users")

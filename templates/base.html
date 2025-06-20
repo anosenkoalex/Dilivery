@@ -11,10 +11,14 @@
 {% if current_user.is_authenticated %}
 <div class="d-flex">
   <nav id="sidebarMenu" class="d-none d-md-flex flex-column flex-shrink-0 p-3 bg-light position-fixed" style="width:220px;height:100vh;">
-    <a class="fs-4 text-decoration-none mb-3" href="{{ url_for('orders') }}">CRM</a>
+    <a class="fs-4 text-decoration-none mb-3" href="{{ url_for(current_user.role == 'courier' and 'courier_dashboard' or 'orders') }}">CRM</a>
     <ul class="nav nav-pills flex-column mb-auto">
+      {% if current_user.role == 'courier' %}
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('courier_dashboard') }}">Мои заказы</a></li>
+      {% else %}
       <li class="nav-item"><a class="nav-link" href="{{ url_for('orders') }}">Заказы</a></li>
       <li><a class="nav-link" href="{{ url_for('map_view') }}">Карта заказов</a></li>
+      {% endif %}
       {% if current_user.role == 'admin' %}
       <li><a class="nav-link" href="{{ url_for('zones') }}">Зоны доставки</a></li>
       <li><a class="nav-link" href="{{ url_for('users') }}">Пользователи</a></li>
@@ -48,8 +52,12 @@
     </div>
     <div class="offcanvas-body">
       <ul class="nav nav-pills flex-column mb-auto">
+        {% if current_user.role == 'courier' %}
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('courier_dashboard') }}">Мои заказы</a></li>
+        {% else %}
         <li class="nav-item"><a class="nav-link" href="{{ url_for('orders') }}">Заказы</a></li>
         <li><a class="nav-link" href="{{ url_for('map_view') }}">Карта заказов</a></li>
+        {% endif %}
         {% if current_user.role == 'admin' %}
         <li><a class="nav-link" href="{{ url_for('zones') }}">Зоны доставки</a></li>
         <li><a class="nav-link" href="{{ url_for('users') }}">Пользователи</a></li>

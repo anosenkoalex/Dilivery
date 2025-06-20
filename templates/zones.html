@@ -2,7 +2,7 @@
 {% block content %}
 <h2>Зоны доставки</h2>
 <a class="btn btn-primary mb-3" href="{{ url_for('create_zone') }}">Создать зону</a>
-<div class="table-responsive">
+<div class="table-responsive card">
 <table class="table table-striped mb-3">
     <thead>
         <tr><th>ID</th><th>Название</th><th>Цвет</th><th></th></tr>
@@ -22,7 +22,7 @@
     </tbody>
 </table>
 </div>
-<div class="map-container full-screen-map">
+<div class="card map-container full-screen-map">
     <div id="zones-map" class="leaflet-map"></div>
 </div>
 {% endblock %}

@@ -8,10 +8,17 @@
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="map-tab" data-bs-toggle="tab" data-bs-target="#tabMap" type="button" role="tab">Карта</button>
   </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="delivered-tab" data-bs-toggle="tab" data-bs-target="#tabDelivered" type="button" role="tab">Доставленные</button>
+  </li>
 </ul>
 <div class="tab-content pt-3">
   <div class="tab-pane fade show active" id="tabOrders" role="tabpanel">
     <h5 class="mb-3">Заказов к выдаче: <span id="counterText">{{ prepared_count }}</span></h5>
+    <p id="noOrdersMsg"{% if prepared_count > 0 %} class="d-none"{% endif %}>Нет заказов к выдаче.</p>
+    {% if prepared_count > 0 %}
+    <button id="acceptAllBtn" class="btn btn-primary mb-3">Принять все в работу</button>
+    {% endif %}
     <div class="table-responsive">
       <table class="table table-striped">
         <thead><tr><th></th><th>№</th><th>Адрес</th><th class="text-center">Статус</th><th class="text-center">Действия</th></tr></thead>
@@ -39,6 +46,18 @@
   </div>
   <div class="tab-pane fade" id="tabMap" role="tabpanel">
     <div id="courierMap" style="width:100%;height:400px;"></div>
+  </div>
+  <div class="tab-pane fade" id="tabDelivered" role="tabpanel">
+    <div class="table-responsive">
+      <table class="table table-striped">
+        <thead><tr><th>№</th><th>Адрес</th><th>Дата доставки</th></tr></thead>
+        <tbody>
+        {% for o in delivered_orders %}
+          <tr><td>{{ o.order_number }}</td><td>{{ o.address }}</td><td>{{ o.delivered_at }}</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>
 {% endblock %}

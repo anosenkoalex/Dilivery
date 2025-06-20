@@ -632,6 +632,11 @@ def courier_dashboard():
         .all()
     )
     prepared_count = sum(1 for o in orders if o.status == "Подготовлен к доставке")
+    delivered_orders = (
+        Order.query.filter_by(courier_id=courier.id, status="Доставлен")
+        .order_by(Order.delivered_at.desc())
+        .all()
+    )
     all_orders = [
         {
             "id": o.id,
@@ -649,6 +654,7 @@ def courier_dashboard():
         "courier.html",
         orders=orders,
         prepared_count=prepared_count,
+        delivered_orders=delivered_orders,
         all_orders=all_orders,
     )
 
@@ -668,6 +674,24 @@ def courier_take():
     orders = (
         Order.query.filter(Order.id.in_(ids))
         .filter_by(courier_id=courier.id, status="Подготовлен к доставке")
+        .all()
+    )
+    for o in orders:
+        o.status = "Выдано на доставку"
+    db.session.commit()
+    return jsonify(success=True)
+
+
+@app.route("/courier/accept_all", methods=["POST"])
+@login_required
+def accept_all_orders():
+    if current_user.role != "courier":
+        return abort(403)
+    courier = Courier.query.filter_by(telegram=f"@{current_user.username}").first()
+    if not courier:
+        return abort(403)
+    orders = (
+        Order.query.filter_by(courier_id=courier.id, status="Подготовлен к доставке")
         .all()
     )
     for o in orders:

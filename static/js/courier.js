@@ -1,11 +1,15 @@
 window.addEventListener('DOMContentLoaded', function(){
   const ordersBody = document.getElementById('ordersBody');
   const counterEl = document.getElementById('counterText');
+  const acceptAllBtn = document.getElementById('acceptAllBtn');
+  const noOrdersMsg = document.getElementById('noOrdersMsg');
   let map;
 
   function updateCounter(){
     const count = document.querySelectorAll('tr[data-status="Подготовлен к доставке"]').length;
     if(counterEl) counterEl.textContent = count;
+    if(acceptAllBtn) acceptAllBtn.style.display = count > 0 ? '' : 'none';
+    if(noOrdersMsg) noOrdersMsg.style.display = count > 0 ? 'none' : '';
   }
 
   function updateMarker(id, status){
@@ -61,6 +65,14 @@ window.addEventListener('DOMContentLoaded', function(){
 
   document.querySelectorAll('.deliver-btn').forEach(btn => btn.addEventListener('click', deliverHandler));
   document.querySelectorAll('.take-btn').forEach(btn => btn.addEventListener('click', takeHandler));
+
+  if(acceptAllBtn){
+    acceptAllBtn.addEventListener('click', function(){
+      fetch('/courier/accept_all', {method:'POST'})
+        .then(r=>r.json())
+        .then(data=>{ if(data.success){ window.location.reload(); } });
+    });
+  }
 
   // map init
   const mapEl = document.getElementById('courierMap');

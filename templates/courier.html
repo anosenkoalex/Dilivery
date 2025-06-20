@@ -18,15 +18,15 @@
         <tbody id="ordersBody">
         {% for o in orders %}
           <tr data-id="{{ o.id }}" data-status="{{ o.status }}">
-            <td>
+            <td data-label="">
               {% if o.status == 'Подготовлен к доставке' %}
               <button class="btn btn-sm btn-primary take-btn">Принять в работу</button>
               {% endif %}
             </td>
-            <td>{{ o.order_number }}</td>
-            <td>{{ o.address }}</td>
-            <td class="status-cell">{{ o.status }}</td>
-            <td class="actions">
+            <td data-label="№">{{ o.order_number }}</td>
+            <td data-label="Адрес">{{ o.address }}</td>
+            <td class="status-cell" data-label="Статус">{{ o.status }}</td>
+            <td class="actions" data-label="Действия">
               {% if o.status == 'Выдано на доставку' %}
               <button class="btn btn-sm btn-success deliver-btn">Доставлен</button>
               {% endif %}
@@ -38,7 +38,7 @@
     </div>
   </div>
   <div class="tab-pane fade" id="tabMap" role="tabpanel">
-    <div id="courierMap" style="width:100%;height:400px;"></div>
+    <div id="courierMap" class="map-responsive"></div>
   </div>
 </div>
 {% endblock %}

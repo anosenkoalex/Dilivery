@@ -49,6 +49,10 @@ document.addEventListener('DOMContentLoaded', function(){
     latInputId = trg.getAttribute('data-input-lat');
     lonInputId = trg.getAttribute('data-input-lon');
     var mapDiv = document.getElementById('pointMap');
+    if (map) {
+      map.off();
+      map.remove();
+    }
     mapDiv.innerHTML = '';
     map = L.map('pointMap').setView([42.8746,74.6122],13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

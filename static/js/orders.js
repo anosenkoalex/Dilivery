@@ -3,6 +3,11 @@ function closeMapModal() {
     if (modal) {
         modal.style.display = 'none';
     }
+    if (window.orderMap) {
+        window.orderMap.off();
+        window.orderMap.remove();
+        window.orderMap = null;
+    }
 }
 
 function openMapModal(orderId) {
@@ -10,17 +15,22 @@ function openMapModal(orderId) {
     if (!modal) return;
     modal.style.display = 'block';
     const container = document.getElementById('mapContainer');
+    if (window.orderMap) {
+        window.orderMap.off();
+        window.orderMap.remove();
+        window.orderMap = null;
+    }
     container.innerHTML = '';
-    const map = L.map('mapContainer').setView([42.87, 74.6], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    window.orderMap = L.map('mapContainer').setView([42.87, 74.6], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.orderMap);
     let marker;
-    map.on('click', function(e) {
-        if (marker) map.removeLayer(marker);
-        marker = L.marker(e.latlng).addTo(map);
+    window.orderMap.on('click', function(e) {
+        if (marker) window.orderMap.removeLayer(marker);
+        marker = L.marker(e.latlng).addTo(window.orderMap);
         modal.dataset.lat = e.latlng.lat;
         modal.dataset.lng = e.latlng.lng;
     });
-    setTimeout(() => { map.invalidateSize(); }, 0);
+    setTimeout(() => { window.orderMap.invalidateSize(); }, 0);
 
     document.getElementById('saveCoordsBtn').onclick = () => {
         if (!modal.dataset.lat || !modal.dataset.lng) return;

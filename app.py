@@ -22,6 +22,7 @@ from datetime import date, datetime, timedelta
 from io import BytesIO
 
 import openpyxl
+import pandas as pd
 from flask import (
     Flask,
     flash,
@@ -931,8 +932,6 @@ def export_report(rtype):
         if rtype in {"problem", "all"}:
             row["Комментарий"] = o.problem_comment or ""
         data.append(row)
-    import pandas as pd
-
     df = pd.DataFrame(data)
     buf = BytesIO()
     df.to_excel(buf, index=False)
@@ -960,8 +959,6 @@ def _orders_to_excel(orders, include_comment=False):
         if include_comment:
             row["Комментарий"] = o.problem_comment or ""
         data.append(row)
-    import pandas as pd
-
     df = pd.DataFrame(data)
     buf = BytesIO()
     df.to_excel(buf, index=False)

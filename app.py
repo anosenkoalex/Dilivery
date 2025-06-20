@@ -306,6 +306,7 @@ def update_order(order_id):
             order.courier_id = None
     elif order.zone:
         c = assign_courier_for_zone(order.zone)
+        db.session.add(order)
         order.courier = c
     db.session.commit()
     flash("Заказ обновлен", "success")
@@ -329,6 +330,7 @@ def set_coords(order_id):
         order.longitude = lng
         order.zone = detect_zone(lat, lng)
         c = assign_courier_for_zone(order.zone)
+        db.session.add(order)
         order.courier = c
         db.session.commit()
         flash("Координаты сохранены", "success")
@@ -353,6 +355,7 @@ def set_point():
     order.longitude = lon
     order.zone = detect_zone(lat, lon)
     c = assign_courier_for_zone(order.zone)
+    db.session.add(order)
     order.courier = c
     db.session.commit()
     return jsonify({"success": True, "zone": order.zone})
@@ -713,11 +716,11 @@ def run_import(job_id, path, batch_name, col_map=None, header=True):
                         data["longitude"] = lon
                         data["zone"] = detect_zone(lat, lon) if lat and lon else None
                     order = Order(**data, import_batch=batch_name)
+                    db.session.add(order)
                     if order.zone:
                         courier = assign_courier_for_zone(order.zone)
                         if courier:
                             order.courier = courier
-                    db.session.add(order)
                     imported += 1
                     job.processed_rows = imported
                     if imported % 10 == 0:

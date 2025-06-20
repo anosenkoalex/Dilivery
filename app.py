@@ -879,11 +879,13 @@ def export_history():
 @app.route("/reports")
 @admin_required
 def reports():
-    today = date.today()
-    month_start = today.replace(day=1)
-    start = request.args.get("start", month_start.isoformat())
-    end = request.args.get("end", today.isoformat())
-    return render_template("reports.html", start=start, end=end)
+    batches = [
+        b[0]
+        for b in db.session.query(Order.import_batch).distinct().all()
+        if b[0]
+    ]
+    batches.sort()
+    return render_template("reports.html", batches=batches)
 
 
 @app.route("/reports/export/<string:rtype>")
@@ -932,6 +934,63 @@ def export_report(rtype):
     df.to_excel(buf, index=False)
     buf.seek(0)
     filename = f"report_{rtype}_{date.today().isoformat()}.xlsx"
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+def _orders_to_excel(orders, include_comment=False):
+    data = []
+    for o in orders:
+        row = {
+            "№ заказа": o.order_number,
+            "Имя": o.client_name,
+            "Телефон": o.phone,
+            "Адрес": o.address,
+            "Дата": o.delivered_at.isoformat() if o.delivered_at else "",
+            "Зона": o.zone or "",
+        }
+        if include_comment:
+            row["Комментарий"] = o.problem_comment or ""
+        data.append(row)
+    import pandas as pd
+
+    df = pd.DataFrame(data)
+    buf = BytesIO()
+    df.to_excel(buf, index=False)
+    buf.seek(0)
+    return buf
+
+
+@app.route("/download/delivered")
+@admin_required
+def download_delivered():
+    batch = request.args.get("batch")
+    if not batch:
+        abort(400)
+    orders = Order.query.filter_by(import_batch=batch, status="Доставлен").all()
+    buf = _orders_to_excel(orders)
+    filename = f"delivered_{batch}.xlsx"
+    return send_file(
+        buf,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
+@app.route("/download/problem")
+@admin_required
+def download_problem():
+    batch = request.args.get("batch")
+    if not batch:
+        abort(400)
+    orders = Order.query.filter_by(import_batch=batch, status="Проблема").all()
+    buf = _orders_to_excel(orders, include_comment=True)
+    filename = f"problem_{batch}.xlsx"
     return send_file(
         buf,
         as_attachment=True,

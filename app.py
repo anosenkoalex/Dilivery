@@ -37,7 +37,7 @@ from flask_login import (
     logout_user,
 )
 from flask_migrate import Migrate
-from sqlalchemy import func
+from sqlalchemy import func, inspect
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
@@ -180,7 +180,6 @@ def populate_demo_data():
         Courier.query.filter_by(name=f"Courier {i+1}").first() for i in range(5)
     ]
 
-    orders = []
     for i in range(20):
         zone = zones[i % 5]
         lat = 55.71 + (i % 5) * 0.01
@@ -193,11 +192,10 @@ def populate_demo_data():
             latitude=lat,
             longitude=lng,
             zone=zone.name,
-            courier=couriers[i % 5],
             import_batch="DEMO",
         )
-        orders.append(order)
-    db.session.add_all(orders)
+        db.session.add(order)
+        order.courier = couriers[i % 5]
     db.session.commit()
 
 
@@ -360,6 +358,33 @@ def set_point():
     db.session.commit()
     return jsonify({"success": True, "zone": order.zone})
 
+@app.route("/api/orders/<int:order_id>/coordinates", methods=["POST"])
+@login_required
+def api_set_coordinates(order_id):
+    data = request.get_json(silent=True) or {}
+    lat = data.get("latitude")
+    lon = data.get("longitude")
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except (TypeError, ValueError):
+        return jsonify({"success": False}), 400
+    order = Order.query.get_or_404(order_id)
+    order.latitude = lat
+    order.longitude = lon
+    order.zone = detect_zone(lat, lon)
+    courier = assign_courier_for_zone(order.zone)
+    db.session.add(order)
+    order.courier = courier
+    db.session.commit()
+    return jsonify({"success": True, "zone": order.zone})
+
+
+@app.route("/orders/set_coordinates/<int:order_id>", methods=["POST"])
+@login_required
+def set_coordinates(order_id):
+    return api_set_coordinates(order_id)
+
 @login_required
 def add_comment_photo(order_id):
     if current_user.role != "courier":
@@ -415,9 +440,13 @@ def delete_table():
     if not batch:
         flash("Не передан параметр batch", "warning")
         return redirect(url_for("orders"))
-    Order.query.filter_by(import_batch=batch).delete()
-    db.session.commit()
-    flash(f"Таблица «{batch}» удалена", "success")
+    inspector = inspect(db.engine)
+    if inspector.has_table("orders"):
+        Order.query.filter_by(import_batch=batch).delete()
+        db.session.commit()
+        flash(f"Таблица «{batch}» удалена", "success")
+    else:
+        flash("Таблица orders не существует", "warning")
     return redirect(url_for("orders"))
 
 

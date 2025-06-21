@@ -1,5 +1,9 @@
 import os
 
+# Ensure compatibility between platform environment variables
+if "SQLALCHEMY_DATABASE_URI" in os.environ and "DATABASE_URL" not in os.environ:
+    os.environ["DATABASE_URL"] = os.environ["SQLALCHEMY_DATABASE_URI"]
+
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
 class Config:

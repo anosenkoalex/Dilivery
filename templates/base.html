@@ -72,14 +72,13 @@
   </div>
 
   <div class="flex-grow-1" style="margin-left:220px;">
-    <nav class="navbar navbar-light bg-white shadow-sm d-md-none">
-      <div class="container-fluid">
-        <button class="btn btn-primary" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenu">☰</button>
-        <span class="navbar-brand ms-2">CRM</span>
-        <span class="ms-auto me-2">{{ current_user.username }}</span>
-        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('logout') }}">Выход</a>
-      </div>
-    </nav>
+      <nav class="navbar navbar-light bg-white shadow-sm d-md-none">
+        <div class="container-fluid">
+          <button class="btn btn-primary menu-toggle" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenu">☰</button>
+          <span class="navbar-brand ms-2">CRM</span>
+          <span class="ms-auto me-2">{{ current_user.username }}</span>
+        </div>
+      </nav>
     <div class="container-fluid pt-3">
 {% else %}
 <nav class="navbar navbar-light bg-white shadow-sm mb-3">

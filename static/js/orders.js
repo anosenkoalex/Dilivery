@@ -39,7 +39,7 @@ function openMapModal(orderId) {
     if (window.zonesData) {
         window.zonesData.forEach(z => {
             if (z.polygon && z.polygon.length) {
-                const poly = L.polygon(z.polygon.map(p => [p[1], p[0]]), {color: z.color});
+                const poly = L.polygon(z.polygon.map(p => [p[1], p[0]]), {color: z.color, interactive:false});
                 poly.bindPopup(z.name);
                 group.addLayer(poly);
             }

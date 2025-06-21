@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if(window.zonesData){
       window.zonesData.forEach(function(z){
         if(z.polygon && z.polygon.length){
-          var poly = L.polygon(z.polygon.map(function(p){return [p[1], p[0]];}), {color:z.color});
+          var poly = L.polygon(z.polygon.map(function(p){return [p[1], p[0]];}), {color:z.color, interactive:false});
           poly.bindPopup(z.name);
           group.addLayer(poly);
         }

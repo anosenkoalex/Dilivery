@@ -6,6 +6,9 @@
 app = 'dilivery'
 primary_region = 'fra'
 
+[env]
+PORT = "5000"
+
 [build]
 
 [http_service]

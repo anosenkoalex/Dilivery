@@ -168,3 +168,25 @@ body {
 .chart-wrapper canvas {
   display: block;
 }
+
+@media (max-width:768px) {
+  .menu-toggle {
+    padding: 0.5rem 1rem;
+    font-size: 1.25rem;
+  }
+  .login-card {
+    width: 90%;
+    min-width: 280px;
+    margin: 0 auto;
+  }
+  .login-card .btn {
+    width: 100%;
+  }
+  .flex-grow-1 {
+    margin-left: 0 !important;
+  }
+  #ordersTabs .nav-item,
+  #ordersTabs .nav-link {
+    width: 100%;
+  }
+}

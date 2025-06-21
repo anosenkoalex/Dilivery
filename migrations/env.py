@@ -2,6 +2,7 @@ import logging
 from logging.config import fileConfig
 
 from flask import current_app
+from app import app, db
 
 from alembic import context
 
@@ -110,4 +111,5 @@ def run_migrations_online():
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    run_migrations_online()
+    with app.app_context():
+        run_migrations_online()

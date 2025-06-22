@@ -298,7 +298,7 @@ def orders():
         if courier and courier.zones:
             allowed_zones = [z.strip() for z in courier.zones.split(",") if z.strip()]
 
-    engine = db.session.get_bind() or db.engine
+    engine = db.get_engine()
     dialect = engine.dialect.name
 
     inspector = inspect(engine)

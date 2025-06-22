@@ -3,6 +3,9 @@ if __name__ == "__main__":
     eventlet.monkey_patch()
 
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 if os.environ.get("FLASK_RUN_FROM_CLI") and not os.environ.get("ALLOW_FLASK_CLI"):
     raise RuntimeError(
@@ -52,6 +55,7 @@ from models import Courier, DeliveryZone, ImportJob, Order, User, db
 
 app = Flask(__name__)
 app.config.from_object(Config)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 
 db.init_app(app)
 migrate = Migrate(app, db)

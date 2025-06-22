@@ -306,25 +306,27 @@ def orders():
     if inspector.has_table(Order.__tablename__):
         order_tables.append(Order.__tablename__)
 
-    if dialect == "postgresql":
-        result = engine.execute(
-            text(
-                "SELECT tablename FROM pg_tables "
-                "WHERE schemaname = 'public' "
-                "AND tablename LIKE 'orders_%'"
+    tables = []
+    with engine.connect() as connection:
+        if dialect == "postgresql":
+            result = connection.execute(
+                text(
+                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'orders_%'"
+                )
             )
-        )
-        order_tables.extend(row[0] for row in result.fetchall())
-
-    elif dialect == "sqlite":
-        result = engine.execute(
-            text(
-                "SELECT name FROM sqlite_master "
-                "WHERE type='table' AND name LIKE 'orders_%'"
+        elif dialect == "sqlite":
+            result = connection.execute(
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'orders_%'"
+                )
             )
-        )
-        order_tables.extend(row[0] for row in result.fetchall())
+        else:
+            result = []
 
+        tables = [row[0] for row in result]
+
+    if tables:
+        order_tables.extend(tables)
     else:
         order_tables.extend(
             t for t in inspector.get_table_names() if t.startswith("orders_")

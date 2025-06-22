@@ -58,22 +58,7 @@ from models import Courier, DeliveryZone, ImportJob, Order, User, db
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Configure the database connection using environment variables only. This
-# ensures secrets provided by Fly.io are picked up correctly.
-database_url = os.environ.get("SQLALCHEMY_DATABASE_URI") or os.environ.get("DATABASE_URL")
-print("DB URI:", database_url)
-
-if not database_url:
-    raise RuntimeError("SQLALCHEMY_DATABASE_URI must be set")
-
-# SQLAlchemy requires the driver name to be explicit. Convert legacy URLs if
-# needed.
-if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
-elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+psycopg2://"):
-    database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
-
-app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI") or os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)

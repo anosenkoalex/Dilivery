@@ -7,3 +7,5 @@ FILE="$BACKUP_DIR/backup-$DATE.sql"
 pg_dump postgresql://appuser:StrongPass123@dilivery-db.flycast:5432/postgres > "$FILE"
 # keep last 7 backups
 ls -1t "$BACKUP_DIR"/backup-*.sql 2>/dev/null | tail -n +8 | xargs -r rm --
+# Delete backups older than 7 days
+find /backups -type f -name "*.sql" -mtime +7 -delete

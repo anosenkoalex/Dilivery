@@ -18,6 +18,8 @@ class Order(db.Model):
     address = db.Column(db.String(256))
     note = db.Column(db.Text)
     import_batch = db.Column(db.String(64))
+    import_id = db.Column(UUID(as_uuid=True))
+    local_order_number = db.Column(db.Integer)
     status = db.Column(db.String(64), default="Складская обработка")
     latitude = db.Column(db.Float)
     longitude = db.Column(db.Float)

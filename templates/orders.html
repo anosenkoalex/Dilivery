@@ -28,7 +28,7 @@
     {% for batch, lst in orders_by_batch.items() %}
     <details class="mb-3" {% if loop.last %}open{% endif %}>
       <summary class="h5 d-flex justify-content-between align-items-center">
-        <span>Импорт: {{ batch }}</span>
+        <span>Импорт: {{ import_ids.get(batch, batch) }}</span>
         {% if current_user.role == 'admin' %}
         <form method="post" action="/orders/delete_table" class="d-inline" onsubmit="return confirm('Удалить ВСЮ таблицу?');">
           <input type="hidden" name="batch" value="{{ batch }}">
@@ -44,7 +44,7 @@
           <tbody>
             {% for o in lst %}
             <tr data-id="{{ o.id }}" class="{% if not o.zone %}table-warning{% endif %}">
-              <td data-label="ID">{{ o.id }}</td>
+              <td data-label="ID">{{ o.local_order_number }}</td>
               <td data-label="№">{{ o.order_number }}</td>
               <td data-label="Клиент">{{ o.client_name }}</td>
               <td data-label="Телефон">{{ o.phone }}</td>
@@ -139,7 +139,7 @@
             <tbody>
               {% for o in lst %}
               <tr data-id="{{ o.id }}" class="{% if not o.zone %}table-warning{% endif %}">
-                <td data-label="ID">{{ o.id }}</td>
+                <td data-label="ID">{{ o.local_order_number }}</td>
                 <td data-label="№">{{ o.order_number }}</td>
                 <td data-label="Клиент">{{ o.client_name }}</td>
                 <td data-label="Телефон">{{ o.phone }}</td>

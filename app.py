@@ -60,21 +60,18 @@ app.config.from_object("config.Config")
 
 # Read the connection string from environment variables. Fly.io provides
 # secrets as environment variables, so just looking them up is enough.
-database_url = os.environ.get("SQLALCHEMY_DATABASE_URI") or os.environ.get("DATABASE_URL")
-print("SQLALCHEMY_DATABASE_URI:", os.environ.get("SQLALCHEMY_DATABASE_URI"))
-print("DATABASE_URL:", os.environ.get("DATABASE_URL"))
+database_uri = os.getenv("SQLALCHEMY_DATABASE_URI") or os.getenv("DATABASE_URL")
 
-if not database_url:
+if not database_uri:
     raise RuntimeError("Database connection string is not set")
 
-# SQLAlchemy 2.x requires an explicit driver name. Convert legacy URLs if
-# necessary so that `postgres://` continues to work when set via fly secrets.
-if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
-elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+psycopg2://"):
-    database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+# SQLAlchemy 2.x requires an explicit driver name. Convert legacy URLs if necessary so that `postgres://` continues to work
+if database_uri.startswith("postgres://"):
+    database_uri = database_uri.replace("postgres://", "postgresql+psycopg2://", 1)
+elif database_uri.startswith("postgresql://") and not database_uri.startswith("postgresql+psycopg2://"):
+    database_uri = database_uri.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+app.config["SQLALCHEMY_DATABASE_URI"] = database_uri
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)

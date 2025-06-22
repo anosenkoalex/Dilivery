@@ -55,8 +55,16 @@ from models import Courier, DeliveryZone, ImportJob, Order, User, db
 
 app = Flask(__name__)
 app.config.from_object(Config)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("SQLALCHEMY_DATABASE_URI")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+database_url = os.getenv("DATABASE_URL")
+if not database_url:
+    print("❌ DATABASE_URL environment variable is not set")
+    raise SystemExit(1)
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 db.init_app(app)
 migrate = Migrate(app, db)

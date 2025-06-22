@@ -56,7 +56,9 @@ from models import Courier, DeliveryZone, ImportJob, Order, User, db
 app = Flask(__name__)
 app.config.from_object(Config)
 
-database_url = os.getenv("DATABASE_URL")
+# Configure the database connection from environment variables
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI") or os.getenv("DATABASE_URL")
+database_url = app.config["SQLALCHEMY_DATABASE_URI"]
 if not database_url:
     print("❌ DATABASE_URL environment variable is not set")
     raise SystemExit(1)

@@ -1042,11 +1042,27 @@ def _normalize_header(header: str):
     return mapping.get(header)
 
 
-def run_import(job_id, path, batch_name, col_map=None, header=True):
+def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=False):
     """Background import job that processes uploaded files."""
     with app.app_context():
         job = db.session.get(ImportJob, job_id)
         try:
+            if clear_old:
+                Order.query.delete()
+                db.session.commit()
+                if db.session.bind.dialect.name == "postgresql":
+                    inspector = inspect(db.engine)
+                    seq_name = None
+                    for col in inspector.get_columns(Order.__tablename__):
+                        if col["name"] == "id":
+                            default = col.get("default") or ""
+                            m = re.search(r"nextval\('(.+?)'::regclass\)", default)
+                            if m:
+                                seq_name = m.group(1)
+                            break
+                    if seq_name:
+                        db.session.execute(text(f"ALTER SEQUENCE {seq_name} RESTART WITH 1"))
+                        db.session.commit()
             rows = read_file_rows(path)
             if col_map is None:
                 header = True
@@ -1158,11 +1174,13 @@ def api_import_start():
     path = os.path.join(app.config["UPLOAD_FOLDER"], uid)
     file.save(path)
     batch_name = os.path.splitext(file.filename)[0] or os.path.splitext(uid)[0]
+    clear_old = bool(request.form.get("clear"))
     job = ImportJob(filename=uid)
     db.session.add(job)
     db.session.commit()
     threading.Thread(
-        target=run_import, args=(job.id, path, batch_name, None, True)
+        target=run_import,
+        args=(job.id, path, batch_name, None, True, clear_old),
     ).start()
     return jsonify({"job_id": str(job.id)})
 
@@ -1259,12 +1277,14 @@ def import_finish(job_id):
     path = os.path.join(app.config["UPLOAD_FOLDER"], job.filename)
     batch_name = os.path.splitext(job.filename)[0]
     header = bool(request.form.get("header"))
+    clear_old = bool(request.form.get("clear"))
     col_map = {}
     for key, value in request.form.items():
         if key.startswith("map_") and value:
             col_map[int(key.split("_")[1])] = value
     threading.Thread(
-        target=run_import, args=(job.id, path, batch_name, col_map, header)
+        target=run_import,
+        args=(job.id, path, batch_name, col_map, header, clear_old),
     ).start()
     return "OK"
 

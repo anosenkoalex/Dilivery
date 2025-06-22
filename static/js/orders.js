@@ -12,13 +12,21 @@ function closeMapModal() {
 
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('orderSearch');
-    if (!searchInput) return;
-    searchInput.addEventListener('input', function () {
-        const value = this.value.toLowerCase();
-        document.querySelectorAll('.orders-table tbody tr').forEach(row => {
-            const text = row.innerText.toLowerCase();
-            row.style.display = text.includes(value) ? '' : 'none';
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            const value = this.value.toLowerCase();
+            document.querySelectorAll('.orders-table tbody tr').forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(value) ? '' : 'none';
+            });
         });
+    }
+    document.body.addEventListener('click', function (e) {
+        const btn = e.target.closest('.set-coords');
+        if (btn) {
+            const id = btn.dataset.orderId;
+            if (id) openMapModal(id);
+        }
     });
 });
 

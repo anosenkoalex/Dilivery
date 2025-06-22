@@ -282,11 +282,14 @@ def orders():
     orders = query.order_by(Order.id).all()
     orders_by_zone = defaultdict(list)
     orders_by_batch = defaultdict(list)
+    import_ids = {}
     for o in orders:
         key = o.zone or "Не определена"
         orders_by_zone[key].append(o)
         bkey = o.import_batch or "Без импорта"
         orders_by_batch[bkey].append(o)
+        if o.import_id:
+            import_ids[bkey] = str(o.import_id)
     couriers_list = Courier.query.all()
     zones_list = DeliveryZone.query.all()
     zones_dict = [
@@ -303,6 +306,7 @@ def orders():
         orders=orders,
         orders_by_zone=orders_by_zone,
         orders_by_batch=orders_by_batch,
+        import_ids=import_ids,
         couriers=couriers_list,
         zones=zones_dict,
     )
@@ -1118,7 +1122,12 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                         data["latitude"] = lat
                         data["longitude"] = lon
                         data["zone"] = detect_zone(lat, lon) if lat and lon else None
-                    order = Order(**data, import_batch=batch_name)
+                    order = Order(
+                        **data,
+                        import_batch=batch_name,
+                        import_id=job_id,
+                        local_order_number=imported + 1,
+                    )
                     db.session.add(order)
                     if order.zone:
                         courier = assign_courier_for_zone(order.zone)

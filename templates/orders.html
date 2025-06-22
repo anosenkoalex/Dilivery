@@ -26,9 +26,7 @@
 <div class="tab-content">
   <div class="tab-pane fade show active" id="tabAll">
     {% for batch, lst in orders_by_batch.items() %}
-    <div class="mb-3">
-      <div class="d-flex justify-content-between align-items-center">
-        <a class="h5 text-decoration-none" data-bs-toggle="collapse" href="#collapse-{{ loop.index }}-import" role="button">Импорт: {{ batch }}</a>
+ main
         {% if current_user.role == 'admin' %}
         <form method="post" action="/orders/delete_table" class="d-inline" onsubmit="return confirm('Удалить ВСЮ таблицу?');">
           <input type="hidden" name="batch" value="{{ batch }}">
@@ -45,7 +43,7 @@
           <tbody>
             {% for o in lst %}
             <tr data-id="{{ o.id }}" class="{% if not o.zone %}table-warning{% endif %}">
-              <td data-label="ID">{{ o.id }}</td>
+              <td data-label="ID">{{ o.local_order_number }}</td>
               <td data-label="№">{{ o.order_number }}</td>
               <td data-label="Клиент">{{ o.client_name }}</td>
               <td data-label="Телефон">{{ o.phone }}</td>
@@ -144,7 +142,7 @@
             <tbody>
               {% for o in lst %}
               <tr data-id="{{ o.id }}" class="{% if not o.zone %}table-warning{% endif %}">
-                <td data-label="ID">{{ o.id }}</td>
+                <td data-label="ID">{{ o.local_order_number }}</td>
                 <td data-label="№">{{ o.order_number }}</td>
                 <td data-label="Клиент">{{ o.client_name }}</td>
                 <td data-label="Телефон">{{ o.phone }}</td>

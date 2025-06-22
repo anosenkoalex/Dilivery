@@ -48,7 +48,7 @@ from flask_login import (
     logout_user,
 )
 from flask_migrate import Migrate
-from sqlalchemy import func, inspect, text
+from sqlalchemy import text, inspect
 from types import SimpleNamespace
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -298,17 +298,37 @@ def orders():
         if courier and courier.zones:
             allowed_zones = [z.strip() for z in courier.zones.split(",") if z.strip()]
 
-    inspector = inspect(db.engine)
-    tables = []
+    engine = db.session.get_bind() or db.engine
+    dialect = engine.dialect.name
+
+    inspector = inspect(engine)
+    order_tables = []
     if inspector.has_table(Order.__tablename__):
-        tables.append(Order.__tablename__)
-    if db.session.bind.dialect.name == "postgresql":
-        result = db.session.execute(
-            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'orders_%'"
+        order_tables.append(Order.__tablename__)
+
+    if dialect == "postgresql":
+        result = engine.execute(
+            text(
+                "SELECT tablename FROM pg_tables "
+                "WHERE schemaname = 'public' "
+                "AND tablename LIKE 'orders_%'"
+            )
         )
-        tables.extend(row[0] for row in result.fetchall())
+        order_tables.extend(row[0] for row in result.fetchall())
+
+    elif dialect == "sqlite":
+        result = engine.execute(
+            text(
+                "SELECT name FROM sqlite_master "
+                "WHERE type='table' AND name LIKE 'orders_%'"
+            )
+        )
+        order_tables.extend(row[0] for row in result.fetchall())
+
     else:
-        tables.extend(t for t in inspector.get_table_names() if t.startswith("orders_"))
+        order_tables.extend(
+            t for t in inspector.get_table_names() if t.startswith("orders_")
+        )
 
     couriers_list = Courier.query.all()
     couriers_map = {c.id: c for c in couriers_list}
@@ -318,7 +338,7 @@ def orders():
     import_ids = {}
     all_orders = []
 
-    for name in tables:
+    for name in order_tables:
         if name == Order.__tablename__:
             query = Order.query
             if allowed_zones:
@@ -366,6 +386,7 @@ def orders():
         import_ids=import_ids,
         couriers=couriers_list,
         zones=zones_dict,
+        tables=order_tables,
     )
 
 

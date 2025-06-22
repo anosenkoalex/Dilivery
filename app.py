@@ -56,7 +56,7 @@ from geocode import geocode_address
 from models import Courier, DeliveryZone, ImportJob, Order, User, db
 
 app = Flask(__name__)
-app.config.from_object(Config)
+app.config.from_object("config.Config")
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI") or os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False

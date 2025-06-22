@@ -1366,5 +1366,21 @@ if __name__ == "__main__":
 
 
 if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
+
+        from models import User
+        from werkzeug.security import generate_password_hash
+
+        # ✅ Создание админа, если пользователей ещё нет
+        if not User.query.first():
+            admin = User(
+                username="admin",
+                password_hash=generate_password_hash("admin"),
+                role="admin",
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("✅ Админ создан: admin / admin")
     app.run(host="0.0.0.0", port=5000)
 

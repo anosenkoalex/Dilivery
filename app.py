@@ -49,6 +49,7 @@ from flask_login import (
 )
 from flask_migrate import Migrate
 from sqlalchemy import func, inspect, text
+from types import SimpleNamespace
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
@@ -290,28 +291,64 @@ def orders():
             db.session.commit()
             flash("Статус заказа обновлён", "success")
         return redirect(url_for("orders"))
-    query = Order.query
+    courier = None
+    allowed_zones = []
     if current_user.role == "courier":
         courier = Courier.query.filter_by(telegram=f"@{current_user.username}").first()
-        zones = []
         if courier and courier.zones:
-            zones = [z.strip() for z in courier.zones.split(",") if z.strip()]
-        if zones:
-            query = query.filter(Order.zone.in_(zones))
-        else:
-            query = query.filter(db.text("0=1"))
-    orders = query.order_by(Order.id).all()
-    orders_by_zone = defaultdict(list)
-    orders_by_batch = defaultdict(list)
-    import_ids = {}
-    for o in orders:
-        key = o.zone or "Не определена"
-        orders_by_zone[key].append(o)
-        bkey = o.import_batch or "Без импорта"
-        orders_by_batch[bkey].append(o)
-        if o.import_id:
-            import_ids[bkey] = str(o.import_id)
+            allowed_zones = [z.strip() for z in courier.zones.split(",") if z.strip()]
+
+    inspector = inspect(db.engine)
+    table_names = []
+    if inspector.has_table(Order.__tablename__):
+        table_names.append(Order.__tablename__)
+    if db.session.bind.dialect.name == "postgresql":
+        res = db.session.execute(
+            text(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'orders_%'"
+            )
+        )
+        table_names.extend(row[0] for row in res.fetchall())
+    else:
+        table_names.extend(t for t in inspector.get_table_names() if t.startswith("orders_"))
+
     couriers_list = Courier.query.all()
+    couriers_map = {c.id: c for c in couriers_list}
+
+    orders_by_batch = {}
+    orders_by_zone = defaultdict(list)
+    import_ids = {}
+    all_orders = []
+
+    for name in table_names:
+        if name == Order.__tablename__:
+            query = Order.query
+            if allowed_zones:
+                query = query.filter(Order.zone.in_(allowed_zones))
+            elif current_user.role == "courier":
+                query = query.filter(db.text("0=1"))
+            items = query.order_by(Order.id).all()
+        else:
+            rows = (
+                db.session.execute(text(f"SELECT * FROM {name} ORDER BY id")).mappings().all()
+            )
+            items = []
+            for r in rows:
+                if allowed_zones and (r.get("zone") not in allowed_zones):
+                    continue
+                d = dict(r)
+                d["courier"] = couriers_map.get(d.get("courier_id"))
+                items.append(SimpleNamespace(**d))
+
+        orders_by_batch[name] = items
+        for o in items:
+            key = getattr(o, "zone", None) or "Не определена"
+            orders_by_zone[key].append(o)
+            bkey = name
+            if getattr(o, "import_id", None):
+                import_ids[bkey] = str(getattr(o, "import_id"))
+        all_orders.extend(items)
+
     zones_list = DeliveryZone.query.all()
     zones_dict = [
         {
@@ -322,9 +359,10 @@ def orders():
         }
         for z in zones_list
     ]
+
     return render_template(
         "orders.html",
-        orders=orders,
+        orders=all_orders,
         orders_by_zone=orders_by_zone,
         orders_by_batch=orders_by_batch,
         import_ids=import_ids,

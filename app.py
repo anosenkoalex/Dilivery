@@ -1340,5 +1340,10 @@ def stats_data():
 
 
 if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000)
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] in ["db", "migrate", "upgrade", "downgrade"]:
+        # \u041a\u043e\u043c\u0430\u043d\u0434\u0430 \u043c\u0438\u0433\u0440\u0430\u0446\u0438\u0438 \u2014 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0435\u043c \u0441\u0435\u0440\u0432\u0435\u0440
+        pass
+    else:
+        socketio.run(app, host="0.0.0.0", port=5000)
 

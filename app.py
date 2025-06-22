@@ -299,18 +299,16 @@ def orders():
             allowed_zones = [z.strip() for z in courier.zones.split(",") if z.strip()]
 
     inspector = inspect(db.engine)
-    table_names = []
+    tables = []
     if inspector.has_table(Order.__tablename__):
-        table_names.append(Order.__tablename__)
+        tables.append(Order.__tablename__)
     if db.session.bind.dialect.name == "postgresql":
-        res = db.session.execute(
-            text(
-                "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'orders_%'"
-            )
+        result = db.session.execute(
+            "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'orders_%'"
         )
-        table_names.extend(row[0] for row in res.fetchall())
+        tables.extend(row[0] for row in result.fetchall())
     else:
-        table_names.extend(t for t in inspector.get_table_names() if t.startswith("orders_"))
+        tables.extend(t for t in inspector.get_table_names() if t.startswith("orders_"))
 
     couriers_list = Courier.query.all()
     couriers_map = {c.id: c for c in couriers_list}
@@ -320,7 +318,7 @@ def orders():
     import_ids = {}
     all_orders = []
 
-    for name in table_names:
+    for name in tables:
         if name == Order.__tablename__:
             query = Order.query
             if allowed_zones:

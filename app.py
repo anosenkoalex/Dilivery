@@ -5,6 +5,8 @@ if __name__ == "__main__":
 import os
 from dotenv import load_dotenv
 
+# Load variables from a .env file if present for local development. In
+# production (e.g. Fly.io) the environment is configured through secrets.
 load_dotenv()
 
 if os.environ.get("FLASK_RUN_FROM_CLI") and not os.environ.get("ALLOW_FLASK_CLI"):
@@ -56,14 +58,20 @@ from models import Courier, DeliveryZone, ImportJob, Order, User, db
 app = Flask(__name__)
 app.config.from_object(Config)
 
-# Configure the database connection from environment variables
-app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("SQLALCHEMY_DATABASE_URI") or os.getenv("DATABASE_URL")
-database_url = app.config["SQLALCHEMY_DATABASE_URI"]
+# Configure the database connection using environment variables only. This
+# ensures secrets provided by Fly.io are picked up correctly.
+database_url = os.environ.get("SQLALCHEMY_DATABASE_URI") or os.environ.get("DATABASE_URL")
+print("DB URI:", database_url)
+
 if not database_url:
-    print("❌ DATABASE_URL environment variable is not set")
-    raise SystemExit(1)
+    raise RuntimeError("SQLALCHEMY_DATABASE_URI must be set")
+
+# SQLAlchemy requires the driver name to be explicit. Convert legacy URLs if
+# needed.
 if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+    database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif database_url.startswith("postgresql://") and not database_url.startswith("postgresql+psycopg2://"):
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False

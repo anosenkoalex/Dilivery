@@ -214,7 +214,7 @@ with app.app_context():
 
             if "problem_comment" not in column_names:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN problem_comment TEXT"))
-    populate_demo_data()
+    # populate_demo_data()  # Demo data generation disabled
 
 
 @app.route("/")

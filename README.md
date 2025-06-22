@@ -10,7 +10,7 @@ flask db upgrade
 python app.py
 ```
 
-On first start demo data will be generated automatically. Configuration values can be changed in `config.py` or via environment variables.
+Demo data are no longer generated automatically. Create your own zones, couriers and orders manually. Configuration values can be changed in `config.py` or via environment variables.
 
 If you are upgrading from previous versions remove the old SQLite database so that the new
 `ImportJob` id format is applied:

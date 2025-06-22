@@ -55,7 +55,7 @@ from models import Courier, DeliveryZone, ImportJob, Order, User, db
 
 app = Flask(__name__)
 app.config.from_object(Config)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI')
 
 db.init_app(app)
 migrate = Migrate(app, db)

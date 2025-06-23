@@ -1,5 +1,6 @@
 function initMap(orders, zones) {
   const map = L.map('map').setView([42.8746, 74.6122], 13);
+  window.appMap = map;
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
@@ -17,10 +18,12 @@ function initMap(orders, zones) {
       marker.bindPopup(popup);
     }
   });
+  return map;
 }
 
 function initZonesMap(zones) {
   const map = L.map('zones-map').setView([42.8746, 74.6122], 12);
+  window.zonesMap = map;
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
@@ -38,6 +41,7 @@ function initZonesMap(zones) {
   if (group.getLayers().length) {
     map.fitBounds(group.getBounds());
   }
+  return map;
 }
 document.addEventListener('DOMContentLoaded', function(){
   var modalEl = document.getElementById('setPointModal');

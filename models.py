@@ -49,6 +49,14 @@ class DeliveryZone(db.Model):
     polygon_json = db.Column(db.Text, nullable=False)
 
 
+class WorkArea(db.Model):
+    __tablename__ = "work_area"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), default="Рабочая область")
+    geojson = db.Column(db.Text, nullable=False)
+    color = db.Column(db.String(7), default="#777777")
+
+
 class Courier(db.Model):
     __tablename__ = "couriers"
     id = db.Column(db.Integer, primary_key=True)

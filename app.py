@@ -49,12 +49,14 @@ from flask_login import (
 )
 from flask_migrate import Migrate
 from sqlalchemy import text, inspect
+from shapely.geometry import shape
 from types import SimpleNamespace
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
 from geocode import geocode_address
-from models import Courier, DeliveryZone, ImportJob, Order, User, ImportBatch, db
+from models import Courier, DeliveryZone, ImportJob, Order, User, ImportBatch, WorkArea, db
+
 
 app = Flask(__name__)
 app.config.from_object("config.Config")
@@ -575,6 +577,31 @@ def map_view():
     return render_template("map.html", orders=orders_dict, zones=zones_dict)
 
 
+@app.route("/workarea", methods=["GET", "POST"])
+@admin_required
+def workarea():
+    area = WorkArea.query.first()
+    if request.method == "POST":
+        color = request.form.get("color") or "#777777"
+        geojson = request.form.get("geojson") or "{}"
+        if area:
+            area.color = color
+            area.geojson = geojson
+        else:
+            area = WorkArea(name="Рабочая область", color=color, geojson=geojson)
+            db.session.add(area)
+        db.session.commit()
+        flash("Рабочая область сохранена", "success")
+        return redirect(url_for("workarea"))
+    if not area:
+        area = WorkArea(
+            name="Рабочая область",
+            color="#777777",
+            geojson=json.dumps({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": []}}),
+        )
+    return render_template("workarea/index.html", area=area)
+
+
 @app.route("/zones")
 @admin_required
 def zones():
@@ -599,23 +626,36 @@ def create_zone():
         name = request.form.get("name") or ""
         color = request.form.get("color") or "#3388ff"
         polygon = request.form.get("polygon") or "[]"
+        try:
+            coords = json.loads(polygon)
+        except Exception:
+            coords = []
+        zone_poly = shape({"type": "Polygon", "coordinates": [coords]}) if coords else None
+        area = WorkArea.query.first()
+        if area and zone_poly:
+            area_poly = shape(json.loads(area.geojson)["geometry"])
+            if not area_poly.contains(zone_poly):
+                flash("Зона должна находиться внутри рабочей области", "danger")
+                return redirect(url_for("create_zone"))
         zone = DeliveryZone(name=name, color=color, polygon_json=polygon)
         db.session.add(zone)
         db.session.commit()
         flash("Зона создана", "success")
         return redirect(url_for("zones"))
     zone = DeliveryZone(name="", color="#3388ff", polygon_json="[]")
-    zones = DeliveryZone.query.all()
-    zones_dict = [
-        {
-            "id": z.id,
-            "name": z.name,
-            "color": z.color,
-            "polygon": json.loads(z.polygon_json),
-        }
-        for z in zones
-    ]
-    return render_template("edit_zone.html", zone=zone, new=True, zones=zones_dict)
+work_area = WorkArea.query.first()
+zones = DeliveryZone.query.all()
+zones_dict = [
+    {
+        "id": z.id,
+        "name": z.name,
+        "color": z.color,
+        "polygon": json.loads(z.polygon_json),
+    }
+    for z in zones
+]
+return render_template("edit_zone.html", zone=zone, new=True, zones=zones_dict, workarea=work_area)
+
 
 
 @app.route("/zones/<int:zone_id>/edit", methods=["GET", "POST"])
@@ -631,7 +671,8 @@ def edit_zone(zone_id):
         db.session.commit()
         flash("Зона обновлена", "success")
         return redirect(url_for("zones"))
-    return render_template("edit_zone.html", zone=zone)
+    work_area = WorkArea.query.first()
+    return render_template("edit_zone.html", zone=zone, workarea=work_area)
 
 
 @app.route("/zones/<int:zone_id>/delete")

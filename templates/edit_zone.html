@@ -29,7 +29,7 @@
 <script>
 var existing = JSON.parse({{ zone.polygon_json|tojson|safe }});
 var workArea = {{ workarea|tojson if workarea else 'null' }};
-var workColor = {{ ('"' + workarea.color + '"') if workarea else '"#777777"' }};
+var workColor = {{ '"' + workcolor + '"' }};
 var colorInput = document.getElementById('colorInput');
 var map = L.map('map').setView([42.8746, 74.6122], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

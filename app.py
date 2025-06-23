@@ -139,8 +139,11 @@ def point_in_polygon(x, y, polygon):
 def detect_zone(lat, lng):
     zones = DeliveryZone.query.all()
     for zone in zones:
-        polygon = json.loads(zone.polygon_json)
-        if point_in_polygon(lng, lat, polygon):
+        try:
+            polygon = json.loads(zone.polygon_json) if zone.polygon_json else []
+        except Exception:
+            polygon = []
+        if polygon and point_in_polygon(lng, lat, polygon):
             return zone.name
     return None
 
@@ -574,18 +577,27 @@ def map_view():
     ]
 
     work_area = WorkArea.query.first()
-    wa_json = json.loads(work_area.geojson) if work_area else None
+    wa_json = None
+    if work_area:
+        try:
+            wa_dict = json.loads(work_area.geojson)
+            wa_json = wa_dict.get("geometry")
+        except Exception:
+            wa_json = None
 
     zones = DeliveryZone.query.all()
-    zones_dict = [
-        {
+    zones_dict = []
+    for z in zones:
+        try:
+            poly = json.loads(z.polygon_json) if z.polygon_json else []
+        except Exception:
+            poly = []
+        zones_dict.append({
             "id": z.id,
             "name": z.name,
             "color": z.color,
-            "polygon": json.loads(z.polygon_json),
-        }
-        for z in zones
-    ]
+            "polygon": poly,
+        })
 
     return render_template(
         "map.html",
@@ -626,18 +638,27 @@ def workarea():
 @admin_required
 def zones():
     work_area = WorkArea.query.first()
-    wa_json = json.loads(work_area.geojson) if work_area else None
+    wa_json = None
+    if work_area:
+        try:
+            wa_dict = json.loads(work_area.geojson)
+            wa_json = wa_dict.get("geometry")
+        except Exception:
+            wa_json = None
 
     zones = DeliveryZone.query.all()
-    zones_dict = [
-        {
+    zones_dict = []
+    for z in zones:
+        try:
+            poly = json.loads(z.polygon_json) if z.polygon_json else []
+        except Exception:
+            poly = []
+        zones_dict.append({
             "id": z.id,
             "name": z.name,
             "color": z.color,
-            "polygon": json.loads(z.polygon_json),
-        }
-        for z in zones
-    ]
+            "polygon": poly,
+        })
 
     return render_template("zones.html", zones=zones_dict, workarea=wa_json)
 
@@ -656,8 +677,14 @@ def new_zone():
             "geometry": {"type": "Polygon", "coordinates": [coords]},
         }
         work_area = WorkArea.query.first()
-        wa_json = json.loads(work_area.geojson) if work_area else None
-        if work_area and not shape(wa_json["geometry"]).contains(
+        wa_json = None
+        if work_area:
+            try:
+                wa_dict = json.loads(work_area.geojson)
+                wa_json = wa_dict.get("geometry")
+            except Exception:
+                wa_json = None
+        if work_area and wa_json and not shape(wa_json).contains(
             shape(zone_geo["geometry"])
         ):
             flash("Зона должна быть внутри рабочей области", "danger")
@@ -671,23 +698,35 @@ def new_zone():
 
     zone = DeliveryZone(name="", color="#3388ff", polygon_json="[]")
     work_area = WorkArea.query.first()
-    wa_json = json.loads(work_area.geojson) if work_area else None
+    wa_json = None
+    work_color = "#777777"
+    if work_area:
+        try:
+            wa_dict = json.loads(work_area.geojson)
+            wa_json = wa_dict.get("geometry")
+        except Exception:
+            wa_json = None
+        work_color = work_area.color
     zones = DeliveryZone.query.all()
-    zones_dict = [
-        {
+    zones_dict = []
+    for z in zones:
+        try:
+            poly = json.loads(z.polygon_json) if z.polygon_json else []
+        except Exception:
+            poly = []
+        zones_dict.append({
             "id": z.id,
             "name": z.name,
             "color": z.color,
-            "polygon": json.loads(z.polygon_json),
-        }
-        for z in zones
-    ]
+            "polygon": poly,
+        })
     return render_template(
         "edit_zone.html",
         zone=zone,
         new=True,
         zones=zones_dict,
         workarea=wa_json,
+        workcolor=work_color,
     )
 
 
@@ -706,8 +745,14 @@ def edit_zone(zone_id):
                 "geometry": {"type": "Polygon", "coordinates": [coords]},
             }
             work_area = WorkArea.query.first()
-            wa_json = json.loads(work_area.geojson) if work_area else None
-            if work_area and not shape(wa_json["geometry"]).contains(
+            wa_json = None
+            if work_area:
+                try:
+                    wa_dict = json.loads(work_area.geojson)
+                    wa_json = wa_dict.get("geometry")
+                except Exception:
+                    wa_json = None
+            if work_area and wa_json and not shape(wa_json).contains(
                 shape(zone_geo["geometry"])
             ):
                 flash("Зона должна быть внутри рабочей области", "danger")
@@ -717,8 +762,21 @@ def edit_zone(zone_id):
         flash("Зона обновлена", "success")
         return redirect(url_for("zones"))
     work_area = WorkArea.query.first()
-    wa_json = json.loads(work_area.geojson) if work_area else None
-    return render_template("edit_zone.html", zone=zone, workarea=wa_json)
+    wa_json = None
+    work_color = "#777777"
+    if work_area:
+        try:
+            wa_dict = json.loads(work_area.geojson)
+            wa_json = wa_dict.get("geometry")
+        except Exception:
+            wa_json = None
+        work_color = work_area.color
+    return render_template(
+        "edit_zone.html",
+        zone=zone,
+        workarea=wa_json,
+        workcolor=work_color,
+    )
 
 
 @app.route("/zones/<int:zone_id>/delete")

@@ -618,43 +618,39 @@ def zones():
 
     return render_template("zones.html", zones=zones_dict)
 
-
 @app.route("/zones/new", methods=["GET", "POST"])
 @admin_required
-def create_zone():
+def new_zone():
     if request.method == "POST":
-        name = request.form.get("name") or ""
-        color = request.form.get("color") or "#3388ff"
-        polygon = request.form.get("polygon") or "[]"
-        try:
-            coords = json.loads(polygon)
-        except Exception:
-            coords = []
-        zone_poly = shape({"type": "Polygon", "coordinates": [coords]}) if coords else None
-        area = WorkArea.query.first()
-        if area and zone_poly:
-            area_poly = shape(json.loads(area.geojson)["geometry"])
-            if not area_poly.contains(zone_poly):
-                flash("Зона должна находиться внутри рабочей области", "danger")
-                return redirect(url_for("create_zone"))
+        name = request.form["name"]
+        color = request.form["color"]
+        polygon = request.form["geojson"]
+
         zone = DeliveryZone(name=name, color=color, polygon_json=polygon)
         db.session.add(zone)
         db.session.commit()
         flash("Зона создана", "success")
         return redirect(url_for("zones"))
+
     zone = DeliveryZone(name="", color="#3388ff", polygon_json="[]")
-work_area = WorkArea.query.first()
-zones = DeliveryZone.query.all()
-zones_dict = [
-    {
-        "id": z.id,
-        "name": z.name,
-        "color": z.color,
-        "polygon": json.loads(z.polygon_json),
-    }
-    for z in zones
-]
-return render_template("edit_zone.html", zone=zone, new=True, zones=zones_dict, workarea=work_area)
+    work_area = WorkArea.query.first()
+    zones = DeliveryZone.query.all()
+    zones_dict = [
+        {
+            "id": z.id,
+            "name": z.name,
+            "color": z.color,
+            "polygon": json.loads(z.polygon_json),
+        }
+        for z in zones
+    ]
+    return render_template(
+        "edit_zone.html",
+        zone=zone,
+        new=True,
+        zones=zones_dict,
+        workarea=work_area,
+    )
 
 
 

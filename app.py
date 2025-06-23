@@ -54,7 +54,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
 from geocode import geocode_address
-from models import Courier, DeliveryZone, ImportJob, Order, User, db
+from models import Courier, DeliveryZone, ImportJob, Order, User, ImportBatch, db
 
 app = Flask(__name__)
 app.config.from_object("config.Config")
@@ -298,75 +298,25 @@ def orders():
         if courier and courier.zones:
             allowed_zones = [z.strip() for z in courier.zones.split(",") if z.strip()]
 
-    engine = db.get_engine()
-    dialect = engine.dialect.name
-
-    inspector = inspect(engine)
-    order_tables = []
-    if inspector.has_table(Order.__tablename__):
-        order_tables.append(Order.__tablename__)
-
-    tables = []
-    with engine.connect() as connection:
-        if dialect == "postgresql":
-            result = connection.execute(
-                text(
-                    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'orders_%'"
-                )
-            )
-        elif dialect == "sqlite":
-            result = connection.execute(
-                text(
-                    "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'orders_%'"
-                )
-            )
-        else:
-            result = []
-
-        tables = [row[0] for row in result]
-
-    if tables:
-        order_tables.extend(tables)
-    else:
-        order_tables.extend(
-            t for t in inspector.get_table_names() if t.startswith("orders_")
-        )
-
     couriers_list = Courier.query.all()
     couriers_map = {c.id: c for c in couriers_list}
 
     orders_by_batch = {}
     orders_by_zone = defaultdict(list)
-    import_ids = {}
     all_orders = []
 
-    for name in order_tables:
-        if name == Order.__tablename__:
-            query = Order.query
-            if allowed_zones:
-                query = query.filter(Order.zone.in_(allowed_zones))
-            elif current_user.role == "courier":
-                query = query.filter(db.text("0=1"))
-            items = query.order_by(Order.id).all()
-        else:
-            rows = (
-                db.session.execute(text(f"SELECT * FROM {name} ORDER BY id")).mappings().all()
-            )
-            items = []
-            for r in rows:
-                if allowed_zones and (r.get("zone") not in allowed_zones):
-                    continue
-                d = dict(r)
-                d["courier"] = couriers_map.get(d.get("courier_id"))
-                items.append(SimpleNamespace(**d))
-
-        orders_by_batch[name] = items
+    batches = ImportBatch.query.order_by(ImportBatch.created_at.desc()).all()
+    for batch in batches:
+        query = Order.query.filter_by(import_batch_id=batch.id)
+        if allowed_zones:
+            query = query.filter(Order.zone.in_(allowed_zones))
+        elif current_user.role == "courier":
+            query = query.filter(db.text("0=1"))
+        items = query.order_by(Order.id).all()
+        orders_by_batch[batch] = items
         for o in items:
             key = getattr(o, "zone", None) or "Не определена"
             orders_by_zone[key].append(o)
-            bkey = name
-            if getattr(o, "import_id", None):
-                import_ids[bkey] = str(getattr(o, "import_id"))
         all_orders.extend(items)
 
     zones_list = DeliveryZone.query.all()
@@ -385,10 +335,8 @@ def orders():
         orders=all_orders,
         orders_by_zone=orders_by_zone,
         orders_by_batch=orders_by_batch,
-        import_ids=import_ids,
         couriers=couriers_list,
         zones=zones_dict,
-        tables=order_tables,
     )
 
 
@@ -573,33 +521,18 @@ def delete_order(order_id):
     return redirect(url_for("orders"))
 
 
-@app.route("/orders/delete_batch", methods=["POST"])
+@app.route("/delete_batch/<int:batch_id>", methods=["POST"])
 @admin_required
-def delete_batch():
+def delete_batch(batch_id):
     """Delete all orders imported in the given batch."""
-    batch = request.form.get("batch")
-    if batch:
-        Order.query.filter_by(import_batch=batch).delete()
-        db.session.commit()
-        flash(f"Импорт '{batch}' удалён", "success")
+    batch = ImportBatch.query.get_or_404(batch_id)
+    Order.query.filter_by(import_batch_id=batch.id).delete()
+    db.session.delete(batch)
+    db.session.commit()
+    flash("Таблица удалена", "success")
     return redirect(url_for("orders"))
 
 
-@app.route("/orders/delete_table", methods=["POST"])
-@login_required
-def delete_table():
-    batch = request.form.get("batch")
-    if not batch:
-        flash("Не передан параметр batch", "warning")
-        return redirect(url_for("orders"))
-    inspector = inspect(db.engine)
-    if inspector.has_table("orders"):
-        Order.query.filter_by(import_batch=batch).delete()
-        db.session.commit()
-        flash(f"Таблица «{batch}» удалена", "success")
-    else:
-        flash("Таблица orders не существует", "warning")
-    return redirect(url_for("orders"))
 
 
 @app.route("/map")
@@ -1133,6 +1066,7 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
         try:
             if clear_old:
                 Order.query.delete()
+                ImportBatch.query.delete()
                 db.session.commit()
                 if db.session.bind.dialect.name == "postgresql":
                     inspector = inspect(db.engine)
@@ -1147,6 +1081,10 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                     if seq_name:
                         db.session.execute(text(f"ALTER SEQUENCE {seq_name} RESTART WITH 1"))
                         db.session.commit()
+            batch = ImportBatch(name=batch_name)
+            db.session.add(batch)
+            db.session.commit()
+
             rows = read_file_rows(path)
             if col_map is None:
                 header = True
@@ -1205,6 +1143,7 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                     order = Order(
                         **data,
                         import_batch=batch_name,
+                        import_batch_id=batch.id,
                         import_id=job_id,
                         local_order_number=imported + 1,
                     )

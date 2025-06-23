@@ -253,6 +253,9 @@ with app.app_context():
 
             if "problem_comment" not in column_names:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN problem_comment TEXT"))
+    inspector = inspect(db.engine)
+    columns = [c["name"] for c in inspector.get_columns("orders")]
+    app.config["HAS_IMPORT_BATCH_ID"] = "import_batch_id" in columns
     # populate_demo_data()  # Demo data generation disabled
 
 
@@ -322,18 +325,26 @@ def orders():
     orders_by_zone = defaultdict(list)
     all_orders = []
 
-    batches = ImportBatch.query.order_by(ImportBatch.created_at.desc()).all()
-    for batch in batches:
-        query = Order.query.filter_by(import_batch_id=batch.id)
-        if allowed_zones:
-            query = query.filter(Order.zone.in_(allowed_zones))
-        elif current_user.role == "courier":
-            query = query.filter(db.text("0=1"))
-        items = query.order_by(Order.id).all()
-        orders_by_batch[batch] = items
+    if app.config.get("HAS_IMPORT_BATCH_ID"):
+        batches = ImportBatch.query.order_by(ImportBatch.created_at.desc()).all()
+        for batch in batches:
+            query = Order.query.filter_by(import_batch_id=batch.id)
+            if allowed_zones:
+                query = query.filter(Order.zone.in_(allowed_zones))
+            elif current_user.role == "courier":
+                query = query.filter(db.text("0=1"))
+            items = query.order_by(Order.id).all()
+            orders_by_batch[batch] = items
+            for o in items:
+                key = getattr(o, "zone", None) or "Не определена"
+                orders_by_zone[key].append(o)
+            all_orders.extend(items)
+    else:
+        items = Order.query.order_by(Order.id).all()
         for o in items:
             key = getattr(o, "zone", None) or "Не определена"
             orders_by_zone[key].append(o)
+        orders_by_batch[SimpleNamespace(name="Все заказы", created_at=None)] = items
         all_orders.extend(items)
 
     zones_list = DeliveryZone.query.all()
@@ -543,7 +554,10 @@ def delete_order(order_id):
 def delete_batch(batch_id):
     """Delete all orders imported in the given batch."""
     batch = ImportBatch.query.get_or_404(batch_id)
-    Order.query.filter_by(import_batch_id=batch.id).delete()
+    if app.config.get("HAS_IMPORT_BATCH_ID"):
+        Order.query.filter_by(import_batch_id=batch.id).delete()
+    else:
+        Order.query.filter_by(import_batch=batch.name).delete()
     db.session.delete(batch)
     db.session.commit()
     flash("Таблица удалена", "success")
@@ -1267,13 +1281,15 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                         data["latitude"] = lat
                         data["longitude"] = lon
                         data["zone"] = detect_zone(lat, lon) if lat and lon else None
-                    order = Order(
+                    order_kwargs = {
                         **data,
-                        import_batch=batch_name,
-                        import_batch_id=batch.id,
-                        import_id=job_id,
-                        local_order_number=imported + 1,
-                    )
+                        "import_batch": batch_name,
+                        "import_id": job_id,
+                        "local_order_number": imported + 1,
+                    }
+                    if app.config.get("HAS_IMPORT_BATCH_ID"):
+                        order_kwargs["import_batch_id"] = batch.id
+                    order = Order(**order_kwargs)
                     db.session.add(order)
                     if order.zone:
                         courier = assign_courier_for_zone(order.zone)

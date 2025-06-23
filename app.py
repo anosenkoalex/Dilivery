@@ -349,15 +349,18 @@ def orders():
         all_orders.extend(items)
 
     zones_list = DeliveryZone.query.all()
-    zones_dict = [
-        {
+    zones_dict = []
+    for z in zones_list:
+        try:
+            poly = json.loads(z.polygon_json) if z and z.polygon_json else []
+        except Exception:
+            poly = []
+        zones_dict.append({
             "id": z.id,
             "name": z.name,
             "color": z.color,
-            "polygon": json.loads(z.polygon_json),
-        }
-        for z in zones_list
-    ]
+            "polygon": poly,
+        })
 
     return render_template(
         "orders.html",
@@ -439,15 +442,18 @@ def set_coords(order_id):
         flash("Координаты сохранены", "success")
         return redirect(url_for("orders"))
     zones_list = DeliveryZone.query.all()
-    zones_dict = [
-        {
+    zones_dict = []
+    for z in zones_list:
+        try:
+            poly = json.loads(z.polygon_json) if z and z.polygon_json else []
+        except Exception:
+            poly = []
+        zones_dict.append({
             "id": z.id,
             "name": z.name,
             "color": z.color,
-            "polygon": json.loads(z.polygon_json),
-        }
-        for z in zones_list
-    ]
+            "polygon": poly,
+        })
     return render_template("set_coords.html", order=order, zones=zones_dict)
 
 
@@ -595,7 +601,7 @@ def map_view():
     wa_json = None
     if wa:
         try:
-            wa_json = json.loads(wa.geojson)
+            wa_json = json.loads(wa.geojson).get("geometry")
         except Exception:
             wa_json = None
 
@@ -603,7 +609,7 @@ def map_view():
     zones_dict = []
     for z in zones:
         try:
-            poly = json.loads(z.polygon_json) if z.polygon_json else []
+            poly = json.loads(z.polygon_json) if z and z.polygon_json else []
         except Exception:
             poly = []
         zones_dict.append({
@@ -661,7 +667,7 @@ def zones():
     wa_json = None
     if work_area:
         try:
-            wa_json = json.loads(work_area.geojson)
+            wa_json = json.loads(work_area.geojson).get("geometry")
         except Exception:
             wa_json = None
 
@@ -669,7 +675,7 @@ def zones():
     zones_dict = []
     for z in zones:
         try:
-            poly = json.loads(z.polygon_json) if z.polygon_json else []
+            poly = json.loads(z.polygon_json) if z and z.polygon_json else []
         except Exception:
             poly = []
         zones_dict.append({
@@ -730,7 +736,7 @@ def edit_zone(zone_id=None):
     work_color = "#777777"
     if wa:
         try:
-            wa_json = json.loads(wa.geojson)
+            wa_json = json.loads(wa.geojson).get("geometry")
         except Exception:
             wa_json = None
         work_color = wa.color
@@ -738,7 +744,7 @@ def edit_zone(zone_id=None):
     zones_dict = []
     for z in zones:
         try:
-            poly = json.loads(z.polygon_json) if z.polygon_json else []
+            poly = json.loads(z.polygon_json) if z and z.polygon_json else []
         except Exception:
             poly = []
         zones_dict.append({
@@ -1285,11 +1291,8 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                     order_kwargs = {
                         **data,
                         "import_batch": batch_name,
-                        "import_id": job_id,
                         "local_order_number": imported + 1,
                     }
-                    if hasattr(Order, "import_batch_id") and app.config.get("HAS_IMPORT_BATCH_ID"):
-                        order_kwargs["import_batch_id"] = batch.id
                     order = Order(**order_kwargs)
                     db.session.add(order)
                     if order.zone:

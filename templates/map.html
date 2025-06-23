@@ -11,8 +11,15 @@
 <script>
 var orders = {{ orders|tojson }};
 var zones = {{ zones|tojson }};
+var workarea = {{ workarea|tojson if workarea else 'null' }};
 window.addEventListener('DOMContentLoaded', function(){
-  initMap(orders, zones);
+  var map = initMap(orders, zones);
+  if (workarea) {
+      var waLayer = L.geoJSON({ type: 'Feature', geometry: workarea }, {
+          style: { color: '#777', weight: 2, fillOpacity: 0.05, dashArray: '5 5' }
+      }).addTo(map);
+      map.fitBounds(waLayer.getBounds());
+  }
 });
 </script>
 {% endblock %}

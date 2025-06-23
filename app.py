@@ -1,5 +1,6 @@
 if __name__ == "__main__":
     import eventlet
+
     eventlet.monkey_patch()
 
 import os
@@ -55,7 +56,16 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
 from geocode import geocode_address
-from models import Courier, DeliveryZone, ImportJob, Order, User, ImportBatch, WorkArea, db
+from models import (
+    Courier,
+    DeliveryZone,
+    ImportJob,
+    Order,
+    User,
+    ImportBatch,
+    WorkArea,
+    db,
+)
 
 
 app = Flask(__name__)
@@ -71,7 +81,9 @@ if not database_uri:
 # SQLAlchemy 2.x requires an explicit driver name. Convert legacy URLs if necessary so that `postgres://` continues to work
 if database_uri.startswith("postgres://"):
     database_uri = database_uri.replace("postgres://", "postgresql+psycopg2://", 1)
-elif database_uri.startswith("postgresql://") and not database_uri.startswith("postgresql+psycopg2://"):
+elif database_uri.startswith("postgresql://") and not database_uri.startswith(
+    "postgresql+psycopg2://"
+):
     database_uri = database_uri.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = database_uri
@@ -535,8 +547,6 @@ def delete_batch(batch_id):
     return redirect(url_for("orders"))
 
 
-
-
 @app.route("/map")
 @login_required
 def map_view():
@@ -563,6 +573,9 @@ def map_view():
         for o in orders
     ]
 
+    work_area = WorkArea.query.first()
+    wa_json = json.loads(work_area.geojson) if work_area else None
+
     zones = DeliveryZone.query.all()
     zones_dict = [
         {
@@ -574,7 +587,12 @@ def map_view():
         for z in zones
     ]
 
-    return render_template("map.html", orders=orders_dict, zones=zones_dict)
+    return render_template(
+        "map.html",
+        orders=orders_dict,
+        zones=zones_dict,
+        workarea=wa_json,
+    )
 
 
 @app.route("/workarea", methods=["GET", "POST"])
@@ -597,7 +615,9 @@ def workarea():
         area = WorkArea(
             name="Рабочая область",
             color="#777777",
-            geojson=json.dumps({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": []}}),
+            geojson=json.dumps(
+                {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": []}}
+            ),
         )
     return render_template("workarea/index.html", area=area)
 
@@ -605,6 +625,9 @@ def workarea():
 @app.route("/zones")
 @admin_required
 def zones():
+    work_area = WorkArea.query.first()
+    wa_json = json.loads(work_area.geojson) if work_area else None
+
     zones = DeliveryZone.query.all()
     zones_dict = [
         {
@@ -616,7 +639,8 @@ def zones():
         for z in zones
     ]
 
-    return render_template("zones.html", zones=zones_dict)
+    return render_template("zones.html", zones=zones_dict, workarea=wa_json)
+
 
 @app.route("/zones/new", methods=["GET", "POST"])
 @admin_required
@@ -626,6 +650,19 @@ def new_zone():
         color = request.form["color"]
         polygon = request.form["geojson"]
 
+        coords = json.loads(polygon) if polygon else []
+        zone_geo = {
+            "type": "Feature",
+            "geometry": {"type": "Polygon", "coordinates": [coords]},
+        }
+        work_area = WorkArea.query.first()
+        wa_json = json.loads(work_area.geojson) if work_area else None
+        if work_area and not shape(wa_json["geometry"]).contains(
+            shape(zone_geo["geometry"])
+        ):
+            flash("Зона должна быть внутри рабочей области", "danger")
+            return redirect(url_for("zones"))
+
         zone = DeliveryZone(name=name, color=color, polygon_json=polygon)
         db.session.add(zone)
         db.session.commit()
@@ -634,6 +671,7 @@ def new_zone():
 
     zone = DeliveryZone(name="", color="#3388ff", polygon_json="[]")
     work_area = WorkArea.query.first()
+    wa_json = json.loads(work_area.geojson) if work_area else None
     zones = DeliveryZone.query.all()
     zones_dict = [
         {
@@ -649,9 +687,8 @@ def new_zone():
         zone=zone,
         new=True,
         zones=zones_dict,
-        workarea=work_area,
+        workarea=wa_json,
     )
-
 
 
 @app.route("/zones/<int:zone_id>/edit", methods=["GET", "POST"])
@@ -663,12 +700,25 @@ def edit_zone(zone_id):
         zone.color = request.form.get("color", zone.color)
         polygon = request.form.get("polygon")
         if polygon is not None:
+            coords = json.loads(polygon) if polygon else []
+            zone_geo = {
+                "type": "Feature",
+                "geometry": {"type": "Polygon", "coordinates": [coords]},
+            }
+            work_area = WorkArea.query.first()
+            wa_json = json.loads(work_area.geojson) if work_area else None
+            if work_area and not shape(wa_json["geometry"]).contains(
+                shape(zone_geo["geometry"])
+            ):
+                flash("Зона должна быть внутри рабочей области", "danger")
+                return redirect(url_for("zones"))
             zone.polygon_json = polygon
         db.session.commit()
         flash("Зона обновлена", "success")
         return redirect(url_for("zones"))
     work_area = WorkArea.query.first()
-    return render_template("edit_zone.html", zone=zone, workarea=work_area)
+    wa_json = json.loads(work_area.geojson) if work_area else None
+    return render_template("edit_zone.html", zone=zone, workarea=wa_json)
 
 
 @app.route("/zones/<int:zone_id>/delete")
@@ -699,7 +749,11 @@ def courier_dashboard():
         abort(403)
     orders = (
         Order.query.filter_by(courier_id=courier.id)
-        .filter(Order.status.in_(["Подготовлен к доставке", "Выдано на доставку", "Проблема"]))
+        .filter(
+            Order.status.in_(
+                ["Подготовлен к доставке", "Выдано на доставку", "Проблема"]
+            )
+        )
         .order_by(Order.id)
         .all()
     )
@@ -719,7 +773,11 @@ def courier_dashboard():
             "status": o.status,
         }
         for o in Order.query.filter_by(courier_id=courier.id)
-        .filter(Order.status.in_(["Подготовлен к доставке", "Выдано на доставку", "Проблема"]))
+        .filter(
+            Order.status.in_(
+                ["Подготовлен к доставке", "Выдано на доставку", "Проблема"]
+            )
+        )
         .all()
     ]
     return render_template(
@@ -762,10 +820,9 @@ def accept_all_orders():
     courier = Courier.query.filter_by(telegram=f"@{current_user.username}").first()
     if not courier:
         return abort(403)
-    orders = (
-        Order.query.filter_by(courier_id=courier.id, status="Подготовлен к доставке")
-        .all()
-    )
+    orders = Order.query.filter_by(
+        courier_id=courier.id, status="Подготовлен к доставке"
+    ).all()
     for o in orders:
         o.status = "Выдано на доставку"
     db.session.commit()
@@ -950,9 +1007,7 @@ def export_history():
 @admin_required
 def reports():
     batches = [
-        b[0]
-        for b in db.session.query(Order.import_batch).distinct().all()
-        if b[0]
+        b[0] for b in db.session.query(Order.import_batch).distinct().all() if b[0]
     ]
     batches.sort()
     return render_template("reports.html", batches=batches)
@@ -1126,7 +1181,9 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                                 seq_name = m.group(1)
                             break
                     if seq_name:
-                        db.session.execute(text(f"ALTER SEQUENCE {seq_name} RESTART WITH 1"))
+                        db.session.execute(
+                            text(f"ALTER SEQUENCE {seq_name} RESTART WITH 1")
+                        )
                         db.session.commit()
             batch = ImportBatch(name=batch_name)
             db.session.add(batch)
@@ -1382,13 +1439,17 @@ def stats_data():
     if start:
         try:
             start_d = datetime.fromisoformat(start).date()
-            base_q = base_q.filter((Order.delivered_at == None) | (Order.delivered_at >= start_d))
+            base_q = base_q.filter(
+                (Order.delivered_at == None) | (Order.delivered_at >= start_d)
+            )
         except ValueError:
             pass
     if end:
         try:
             end_d = datetime.fromisoformat(end).date()
-            base_q = base_q.filter((Order.delivered_at == None) | (Order.delivered_at <= end_d))
+            base_q = base_q.filter(
+                (Order.delivered_at == None) | (Order.delivered_at <= end_d)
+            )
         except ValueError:
             pass
 
@@ -1403,6 +1464,7 @@ def stats_data():
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1 and sys.argv[1] in ["db", "migrate", "upgrade", "downgrade"]:
         # \u041a\u043e\u043c\u0430\u043d\u0434\u0430 \u043c\u0438\u0433\u0440\u0430\u0446\u0438\u0438 \u2014 \u043d\u0435 \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0435\u043c \u0441\u0435\u0440\u0432\u0435\u0440
         pass
@@ -1412,4 +1474,3 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
-

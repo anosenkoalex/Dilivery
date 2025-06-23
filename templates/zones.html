@@ -32,7 +32,14 @@
 <script>
 window.addEventListener('DOMContentLoaded', function(){
   var zones = {{ zones|tojson }};
-  initZonesMap(zones);
+  var workarea = {{ workarea|tojson if workarea else 'null' }};
+  var map = initZonesMap(zones);
+  if (workarea) {
+      var waLayer = L.geoJSON({ type: 'Feature', geometry: workarea }, {
+          style: { color: '#777', weight: 2, fillOpacity: 0.05, dashArray: '5 5' }
+      }).addTo(map);
+      map.fitBounds(waLayer.getBounds());
+  }
 });
 </script>
 {% endblock %}

@@ -5,8 +5,16 @@ from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects.postgresql import UUID
 
-
 db = SQLAlchemy()
+
+
+class ImportBatch(db.Model):
+    __tablename__ = "import_batch"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    orders = db.relationship("Order", backref="batch", cascade="all, delete")
 
 
 class Order(db.Model):
@@ -18,6 +26,7 @@ class Order(db.Model):
     address = db.Column(db.String(256))
     note = db.Column(db.Text)
     import_batch = db.Column(db.String(64))
+    import_batch_id = db.Column(db.Integer, db.ForeignKey("import_batch.id"))
     import_id = db.Column(db.String(36), nullable=True)
     local_order_number = db.Column(db.Integer)
     status = db.Column(db.String(64), default="Складская обработка")

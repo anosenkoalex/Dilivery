@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Зоны доставки</h2>
-<a class="btn btn-primary mb-3" href="{{ url_for('new_zone') }}">Создать зону</a>
+<a class="btn btn-primary mb-3" href="{{ url_for('edit_zone', new=True) }}">Создать зону</a>
 <div class="table-responsive card">
 <table class="table table-striped mb-3">
     <thead>

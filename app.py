@@ -668,12 +668,19 @@ def zones():
 
 
 @app.route("/zones/new", methods=["GET", "POST"])
+@app.route("/zones/<int:zone_id>/edit", methods=["GET", "POST"])
 @admin_required
-def new_zone():
+def edit_zone(zone_id=None):
+    new = zone_id is None
+    zone = DeliveryZone.query.get_or_404(zone_id) if zone_id else DeliveryZone(
+        name="", color="#3388ff", polygon_json="[]"
+    )
     if request.method == "POST":
-        name = request.form["name"]
-        color = request.form["color"]
-        polygon = request.form["geojson"]
+        name = request.form.get("name") or zone.name
+        color = request.form.get("color") or zone.color
+        polygon = request.form.get("polygon") or request.form.get("geojson")
+        if not polygon and request.form.get("polygon") is None:
+            polygon = zone.polygon_json
 
         coords = json.loads(polygon) if polygon else []
         zone_geo = {
@@ -693,13 +700,16 @@ def new_zone():
             flash("Зона должна быть внутри рабочей области", "danger")
             return redirect(url_for("zones"))
 
-        zone = DeliveryZone(name=name, color=color, polygon_json=polygon)
-        db.session.add(zone)
+        if new:
+            zone = DeliveryZone(name=name, color=color, polygon_json=polygon)
+            db.session.add(zone)
+        else:
+            zone.name = name
+            zone.color = color
+            zone.polygon_json = polygon
         db.session.commit()
-        flash("Зона создана", "success")
+        flash("Зона создана" if new else "Зона обновлена", "success")
         return redirect(url_for("zones"))
-
-    zone = DeliveryZone(name="", color="#3388ff", polygon_json="[]")
     wa = WorkArea.query.first()
     wa_json = None
     work_color = "#777777"
@@ -725,58 +735,13 @@ def new_zone():
     return render_template(
         "edit_zone.html",
         zone=zone,
-        new=True,
+        new=new,
         zones=zones_dict,
         workarea=wa_json,
         workcolor=work_color,
     )
 
 
-@app.route("/zones/<int:zone_id>/edit", methods=["GET", "POST"])
-@admin_required
-def edit_zone(zone_id):
-    zone = DeliveryZone.query.get_or_404(zone_id)
-    if request.method == "POST":
-        zone.name = request.form.get("name", zone.name)
-        zone.color = request.form.get("color", zone.color)
-        polygon = request.form.get("polygon")
-        if polygon is not None:
-            coords = json.loads(polygon) if polygon else []
-            zone_geo = {
-                "type": "Feature",
-                "geometry": {"type": "Polygon", "coordinates": [coords]},
-            }
-            wa = WorkArea.query.first()
-            wa_json = None
-            if wa:
-                try:
-                    wa_json = json.loads(wa.geojson)
-                except Exception:
-                    wa_json = None
-            if wa and wa_json and not shape(wa_json).contains(
-                shape(zone_geo["geometry"])
-            ):
-                flash("Зона должна быть внутри рабочей области", "danger")
-                return redirect(url_for("zones"))
-            zone.polygon_json = polygon
-        db.session.commit()
-        flash("Зона обновлена", "success")
-        return redirect(url_for("zones"))
-    wa = WorkArea.query.first()
-    wa_json = None
-    work_color = "#777777"
-    if wa:
-        try:
-            wa_json = json.loads(wa.geojson)
-        except Exception:
-            wa_json = None
-        work_color = wa.color
-    return render_template(
-        "edit_zone.html",
-        zone=zone,
-        workarea=wa_json,
-        workcolor=work_color,
-    )
 
 
 @app.route("/zones/<int:zone_id>/delete")

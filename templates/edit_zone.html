@@ -34,6 +34,14 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
+{% if zones %}
+var existingZones = {{ zones|tojson }};
+existingZones.forEach(function(z){
+    if(z.polygon && z.polygon.length){
+        L.polygon(z.polygon.map(function(p){ return [p[1], p[0]]; }), {color: z.color, fillOpacity: 0.05, interactive:false}).addTo(map);
+    }
+});
+{% endif %}
 
 var drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);

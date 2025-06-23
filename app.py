@@ -605,7 +605,17 @@ def create_zone():
         flash("Зона создана", "success")
         return redirect(url_for("zones"))
     zone = DeliveryZone(name="", color="#3388ff", polygon_json="[]")
-    return render_template("edit_zone.html", zone=zone, new=True)
+    zones = DeliveryZone.query.all()
+    zones_dict = [
+        {
+            "id": z.id,
+            "name": z.name,
+            "color": z.color,
+            "polygon": json.loads(z.polygon_json),
+        }
+        for z in zones
+    ]
+    return render_template("edit_zone.html", zone=zone, new=True, zones=zones_dict)
 
 
 @app.route("/zones/<int:zone_id>/edit", methods=["GET", "POST"])
@@ -616,7 +626,7 @@ def edit_zone(zone_id):
         zone.name = request.form.get("name", zone.name)
         zone.color = request.form.get("color", zone.color)
         polygon = request.form.get("polygon")
-        if polygon:
+        if polygon is not None:
             zone.polygon_json = polygon
         db.session.commit()
         flash("Зона обновлена", "success")

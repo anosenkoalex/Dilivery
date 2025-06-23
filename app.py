@@ -255,7 +255,8 @@ with app.app_context():
                 conn.execute(text("ALTER TABLE orders ADD COLUMN problem_comment TEXT"))
     inspector = inspect(db.engine)
     columns = [c["name"] for c in inspector.get_columns("orders")]
-    app.config["HAS_IMPORT_BATCH_ID"] = "import_batch_id" in columns
+    has_attr = hasattr(Order, "import_batch_id")
+    app.config["HAS_IMPORT_BATCH_ID"] = has_attr and "import_batch_id" in columns
     # populate_demo_data()  # Demo data generation disabled
 
 
@@ -325,7 +326,7 @@ def orders():
     orders_by_zone = defaultdict(list)
     all_orders = []
 
-    if app.config.get("HAS_IMPORT_BATCH_ID"):
+    if hasattr(Order, "import_batch_id") and app.config.get("HAS_IMPORT_BATCH_ID"):
         batches = ImportBatch.query.order_by(ImportBatch.created_at.desc()).all()
         for batch in batches:
             query = Order.query.filter_by(import_batch_id=batch.id)
@@ -554,7 +555,7 @@ def delete_order(order_id):
 def delete_batch(batch_id):
     """Delete all orders imported in the given batch."""
     batch = ImportBatch.query.get_or_404(batch_id)
-    if app.config.get("HAS_IMPORT_BATCH_ID"):
+    if hasattr(Order, "import_batch_id") and app.config.get("HAS_IMPORT_BATCH_ID"):
         Order.query.filter_by(import_batch_id=batch.id).delete()
     else:
         Order.query.filter_by(import_batch=batch.name).delete()
@@ -1287,7 +1288,7 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                         "import_id": job_id,
                         "local_order_number": imported + 1,
                     }
-                    if app.config.get("HAS_IMPORT_BATCH_ID"):
+                    if hasattr(Order, "import_batch_id") and app.config.get("HAS_IMPORT_BATCH_ID"):
                         order_kwargs["import_batch_id"] = batch.id
                     order = Order(**order_kwargs)
                     db.session.add(order)

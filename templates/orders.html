@@ -28,18 +28,17 @@
     {% for batch, lst in orders_by_batch.items() %}
     <div class="mb-2">
       <div class="d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">{{ batch }}</h5>
+        <h5 class="mb-0">{{ batch.name }}{% if batch.created_at %} ({{ batch.created_at.strftime('%d.%m.%Y %H:%M') }}){% endif %}</h5>
         <div>
           {% if current_user.role == 'admin' %}
-          <form method="post" action="/orders/delete_table" class="d-inline" onsubmit="return confirm('Удалить ВСЮ таблицу?');">
-            <input type="hidden" name="batch" value="{{ batch }}">
+          <form method="post" action="{{ url_for('delete_batch', batch_id=batch.id) }}" class="d-inline" onsubmit="return confirm('Удалить ВСЮ таблицу?');">
             <button type="submit" class="btn btn-sm btn-danger">Удалить таблицу</button>
           </form>
           {% endif %}
           <a class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" href="#collapse-{{ loop.index }}-import">Свернуть / Развернуть</a>
         </div>
       </div>
-      <div class="collapse show" id="collapse-{{ loop.index }}-import">
+      <div class="collapse" id="collapse-{{ loop.index }}-import">
         <div class="table-responsive card mt-2">
         <table class="table table-striped orders-table" id="ordersTable">
           <thead>

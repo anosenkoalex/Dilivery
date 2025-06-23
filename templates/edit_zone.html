@@ -28,6 +28,8 @@
 <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
 <script>
 var existing = JSON.parse({{ zone.polygon_json|tojson|safe }});
+var workArea = {{ workarea.geojson|tojson|safe if workarea else 'null' }};
+var workColor = {{ ('"' + workarea.color + '"') if workarea else '"#777777"' }};
 var colorInput = document.getElementById('colorInput');
 var map = L.map('map').setView([42.8746, 74.6122], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -37,6 +39,11 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 var drawnItems = new L.FeatureGroup();
 map.addLayer(drawnItems);
+
+if (workArea && workArea.geometry && workArea.geometry.coordinates.length) {
+    var wa = L.polygon(workArea.geometry.coordinates[0].map(function(p){ return [p[1], p[0]];}), {color: workColor, interactive:false, fill:false});
+    wa.addTo(map);
+}
 
 if (existing.length) {
     var poly = L.polygon(existing.map(function(p){ return [p[1], p[0]];}), {color: colorInput.value});

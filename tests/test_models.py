@@ -6,7 +6,7 @@ from flask import Flask
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from models import ImportJob, db
+from models import ImportJob, WorkArea, db
 
 
 @pytest.fixture
@@ -32,3 +32,11 @@ def test_import_job_defaults(session):
     session.commit()
     assert job.status == "running"
     assert job.processed_rows == 0
+
+
+def test_work_area_defaults(session):
+    area = WorkArea(geojson='{"type":"Feature","geometry":{"type":"Polygon","coordinates":[]}}')
+    session.add(area)
+    session.commit()
+    assert area.name == "Рабочая область"
+    assert area.color == "#777777"

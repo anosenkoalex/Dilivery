@@ -1,7 +1,22 @@
+import json
 import requests
 import time
+from shapely.geometry import shape, Point
+
+from models import WorkArea
 
 _last_request_time = 0
+
+
+def is_inside_work_area(lat, lon):
+    area = WorkArea.query.first()
+    if not area:
+        return True
+    try:
+        poly = shape(json.loads(area.geojson)["geometry"])
+        return poly.contains(Point(lon, lat))
+    except Exception:
+        return True
 
 
 def geocode_address(address: str):
@@ -36,7 +51,9 @@ def geocode_address(address: str):
                 lat = float(data[0]["lat"])
                 lon = float(data[0]["lon"])
                 _last_request_time = time.time()
-                return lat, lon
+                if is_inside_work_area(lat, lon):
+                    return lat, lon
+                return None, None
     except Exception:
         pass
     _last_request_time = time.time()

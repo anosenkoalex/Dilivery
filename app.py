@@ -51,7 +51,9 @@ from flask_login import (
 from flask_migrate import Migrate
 from sqlalchemy import text, inspect
 from shapely.geometry import shape
-from types import SimpleNamespace
+from collections import namedtuple
+
+BatchInfo = namedtuple("BatchInfo", ["name", "created_at"])
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from config import Config
@@ -253,10 +255,6 @@ with app.app_context():
 
             if "problem_comment" not in column_names:
                 conn.execute(text("ALTER TABLE orders ADD COLUMN problem_comment TEXT"))
-    inspector = inspect(db.engine)
-    columns = [c["name"] for c in inspector.get_columns("orders")]
-    has_attr = hasattr(Order, "import_batch_id")
-    app.config["HAS_IMPORT_BATCH_ID"] = has_attr and "import_batch_id" in columns
     # populate_demo_data()  # Demo data generation disabled
 
 
@@ -326,10 +324,10 @@ def orders():
     orders_by_zone = defaultdict(list)
     all_orders = []
 
-    if hasattr(Order, "import_batch_id") and app.config.get("HAS_IMPORT_BATCH_ID"):
-        batches = ImportBatch.query.order_by(ImportBatch.created_at.desc()).all()
+    batches = ImportBatch.query.order_by(ImportBatch.created_at.desc()).all()
+    if batches:
         for batch in batches:
-            query = Order.query.filter_by(import_batch_id=batch.id)
+            query = Order.query.filter_by(import_batch=batch.name)
             if allowed_zones:
                 query = query.filter(Order.zone.in_(allowed_zones))
             elif current_user.role == "courier":
@@ -345,7 +343,7 @@ def orders():
         for o in items:
             key = getattr(o, "zone", None) or "Не определена"
             orders_by_zone[key].append(o)
-        orders_by_batch[SimpleNamespace(name="Все заказы", created_at=None)] = items
+        orders_by_batch[BatchInfo(name="Все заказы", created_at=None)] = items
         all_orders.extend(items)
 
     zones_list = DeliveryZone.query.all()
@@ -561,10 +559,7 @@ def delete_order(order_id):
 def delete_batch(batch_id):
     """Delete all orders imported in the given batch."""
     batch = ImportBatch.query.get_or_404(batch_id)
-    if hasattr(Order, "import_batch_id") and app.config.get("HAS_IMPORT_BATCH_ID"):
-        Order.query.filter_by(import_batch_id=batch.id).delete()
-    else:
-        Order.query.filter_by(import_batch=batch.name).delete()
+    Order.query.filter_by(import_batch=batch.name).delete()
     db.session.delete(batch)
     db.session.commit()
     flash("Таблица удалена", "success")

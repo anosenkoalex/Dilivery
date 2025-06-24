@@ -324,7 +324,14 @@ def orders():
     orders_by_zone = defaultdict(list)
     all_orders = []
 
+    batch_filter = request.args.get("batch")
     batches = ImportBatch.query.order_by(ImportBatch.created_at.desc()).all()
+    if batch_filter != "all":
+        if not batch_filter and batches:
+            batch_filter = batches[0].name
+        if batch_filter:
+            batches = [b for b in batches if b.name == batch_filter]
+
     if batches:
         for batch in batches:
             query = Order.query.filter_by(import_batch_label=batch.name)
@@ -1285,6 +1292,7 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                         data["zone"] = detect_zone(lat, lon) if lat and lon else None
                     order_kwargs = {
                         **data,
+                        "import_batch_id": batch.id,
                         "import_batch_label": batch_name,
                         "local_order_number": imported + 1,
                     }

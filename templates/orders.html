@@ -42,7 +42,7 @@
         <div class="table-responsive card mt-2">
         <table class="table table-striped orders-table" id="ordersTable">
           <thead>
-            <tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr>
+            <tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Импорт</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr>
           </thead>
           <tbody>
             {% for o in lst %}
@@ -52,6 +52,7 @@
               <td data-label="Клиент">{{ o.client_name }}</td>
               <td data-label="Телефон">{{ o.phone }}</td>
               <td data-label="Адрес">{{ o.address }}</td>
+              <td data-label="Импорт">{{ o.import_batch_label or '' }}</td>
               <td data-label="Статус">
                 {% set status_class = {
                     'Складская обработка':'bg-secondary',
@@ -142,7 +143,7 @@
       <div class="collapse" id="collapse-zone-{{ loop.index }}">
         <div class="table-responsive card">
           <table class="table table-striped mt-2 orders-table" id="ordersTable">
-            <thead><tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr></thead>
+            <thead><tr><th>ID</th><th>№</th><th>Клиент</th><th>Телефон</th><th>Адрес</th><th>Импорт</th><th>Статус</th><th>Координаты</th><th>Зона доставки</th><th>Курьер</th><th>Комментарий / Фото</th><th>Действия</th></tr></thead>
             <tbody>
               {% for o in lst %}
               <tr data-id="{{ o.id }}" class="{% if not o.zone %}table-warning{% endif %}">
@@ -151,6 +152,7 @@
                 <td data-label="Клиент">{{ o.client_name }}</td>
                 <td data-label="Телефон">{{ o.phone }}</td>
                 <td data-label="Адрес">{{ o.address }}</td>
+                <td data-label="Импорт">{{ o.import_batch_label or '' }}</td>
                 <td data-label="Статус">
                   {% set status_class = {
                       'Складская обработка':'bg-secondary',

@@ -658,15 +658,16 @@ def _replace_work_area(name, color, geojson):
 
 
 @app.route("/workarea", methods=["GET", "POST"])
+@app.route("/work-area", methods=["GET", "POST"])
 @admin_required
-def workarea():
+def work_area():
     if request.method == "POST":
         name = request.form.get("name") or "Рабочая область"
         color = request.form.get("color") or "#777777"
         geojson = request.form.get("geojson") or "{}"
         _replace_work_area(name, color, geojson)
         flash("Рабочая область сохранена", "success")
-        return redirect(url_for("workarea"))
+        return redirect(url_for("work_area"))
 
     area = WorkArea.query.first()
     if not area:
@@ -679,11 +680,7 @@ def workarea():
     return render_template("work_area.html", area=area, workarea=wa_json)
 
 
-@app.route("/work-area")
-@admin_required
-def work_area_page():
-    """Alias for workarea to match new route name."""
-    return workarea()
+
 
 
 @app.route("/work-area/save", methods=["POST"])
@@ -752,12 +749,10 @@ def edit_zone(zone_id=None):
         wa_json = None
         if wa:
             try:
-                wa_json = json.loads(wa.geojson)
+                wa_json = json.loads(wa.geojson).get("geometry")
             except Exception:
                 wa_json = None
-        if wa and wa_json and not shape(wa_json).contains(
-            shape(zone_geo["geometry"])
-        ):
+        if wa and wa_json and not shape(wa_json).contains(shape(zone_geo["geometry"])):
             flash("Зона должна быть внутри рабочей области", "danger")
             return redirect(url_for("zones"))
 

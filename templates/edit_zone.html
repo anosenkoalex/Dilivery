@@ -26,6 +26,7 @@
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
 <script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script>
 var existing = JSON.parse({{ zone.polygon_json|tojson|safe }});
 var workArea = {{ workarea|tojson if workarea else 'null' }};
@@ -50,7 +51,7 @@ map.addLayer(drawnItems);
 
 if (workArea) {
     var waLayer = L.geoJSON({ type: 'Feature', geometry: workArea }, {
-        style: { color: workColor, weight: 2, fillOpacity: 0.05, dashArray: '5 5' }
+        style: { color: workColor, weight: 1, fillOpacity: 0.2, dashArray: '5 5' }
     }).addTo(map);
     map.fitBounds(waLayer.getBounds());
 }
@@ -78,12 +79,32 @@ function updatePolygon(){
     document.getElementById('polygonInput').value = JSON.stringify(coords);
 }
 
+function polygonWithinWork(latlngs){
+    if(!workArea || !workArea.coordinates || !workArea.coordinates.length) return true;
+    try{
+        var poly = turf.polygon([latlngs.map(function(ll){return [ll.lng,ll.lat];})]);
+        var wa = turf.polygon(workArea.coordinates);
+        return turf.booleanWithin(poly, wa);
+    }catch(e){return true;}
+}
+
 map.on(L.Draw.Event.CREATED, function(e){
     drawnItems.clearLayers();
-    drawnItems.addLayer(e.layer);
+    if(!polygonWithinWork(e.layer.getLatLngs()[0])){
+        alert('Зона выходит за пределы рабочей области.');
+    }else{
+        drawnItems.addLayer(e.layer);
+    }
     updatePolygon();
 });
-map.on(L.Draw.Event.EDITED, updatePolygon);
+map.on(L.Draw.Event.EDITED, function(e){
+    e.layers.eachLayer(function(l){
+        if(!polygonWithinWork(l.getLatLngs()[0])){
+            alert('Зона выходит за пределы рабочей области.');
+        }
+    });
+    updatePolygon();
+});
 map.on(L.Draw.Event.DELETED, updatePolygon);
 
 document.getElementById('resetBtn').addEventListener('click', function(e){

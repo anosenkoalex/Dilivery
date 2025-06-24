@@ -20,10 +20,10 @@ def is_inside_work_area(lat, lon):
 
 
 def geocode_address(address: str):
-    """Return latitude and longitude for address using Nominatim."""
+    """Return latitude, longitude and a flag indicating inclusion in work area."""
     global _last_request_time
     if not address:
-        return None, None
+        return None, None, None
     # ensure no more than 1 request per second
     now = time.time()
     elapsed = now - _last_request_time
@@ -51,10 +51,9 @@ def geocode_address(address: str):
                 lat = float(data[0]["lat"])
                 lon = float(data[0]["lon"])
                 _last_request_time = time.time()
-                if is_inside_work_area(lat, lon):
-                    return lat, lon
-                return None, None
+                inside = is_inside_work_area(lat, lon)
+                return lat, lon, inside
     except Exception:
         pass
     _last_request_time = time.time()
-    return None, None
+    return None, None, None

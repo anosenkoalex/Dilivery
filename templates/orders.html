@@ -30,10 +30,12 @@
       <div class="d-flex justify-content-between align-items-center">
         <h5 class="mb-0">{{ batch.name }}{% if batch.created_at %} ({{ batch.created_at.strftime('%d.%m.%Y %H:%M') }}){% endif %}</h5>
         <div>
+          {% if batch.__class__.__name__ == 'ImportBatch' %}
           {% if current_user.role == 'admin' %}
           <form method="post" action="{{ url_for('delete_batch', batch_id=batch.id) }}" class="d-inline" onsubmit="return confirm('Удалить ВСЮ таблицу?');">
             <button type="submit" class="btn btn-sm btn-danger">Удалить таблицу</button>
           </form>
+          {% endif %}
           {% endif %}
           <a class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" href="#collapse-{{ loop.index }}-import">Свернуть / Развернуть</a>
         </div>

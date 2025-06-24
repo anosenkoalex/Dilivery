@@ -239,7 +239,7 @@ def populate_demo_data():
             latitude=lat,
             longitude=lng,
             zone=zone.name,
-            import_batch="DEMO",
+            import_batch_label="DEMO",
         )
         db.session.add(order)
         order.courier = couriers[i % 5]
@@ -327,7 +327,7 @@ def orders():
     batches = ImportBatch.query.order_by(ImportBatch.created_at.desc()).all()
     if batches:
         for batch in batches:
-            query = Order.query.filter_by(import_batch=batch.name)
+            query = Order.query.filter_by(import_batch_label=batch.name)
             if allowed_zones:
                 query = query.filter(Order.zone.in_(allowed_zones))
             elif current_user.role == "courier":
@@ -559,7 +559,7 @@ def delete_order(order_id):
 def delete_batch(batch_id):
     """Delete all orders imported in the given batch."""
     batch = ImportBatch.query.get_or_404(batch_id)
-    Order.query.filter_by(import_batch=batch.name).delete()
+    Order.query.filter_by(import_batch_label=batch.name).delete()
     db.session.delete(batch)
     db.session.commit()
     flash("Таблица удалена", "success")
@@ -1046,7 +1046,7 @@ def export_history():
 @admin_required
 def reports():
     batches = [
-        b[0] for b in db.session.query(Order.import_batch).distinct().all() if b[0]
+        b[0] for b in db.session.query(Order.import_batch_label).distinct().all() if b[0]
     ]
     batches.sort()
     return render_template("reports.html", batches=batches)
@@ -1131,7 +1131,7 @@ def download_delivered():
     batch = request.args.get("batch")
     if not batch:
         abort(400)
-    orders = Order.query.filter_by(import_batch=batch, status="Доставлен").all()
+    orders = Order.query.filter_by(import_batch_label=batch, status="Доставлен").all()
     buf = _orders_to_excel(orders)
     filename = f"delivered_{batch}.xlsx"
     return send_file(
@@ -1148,7 +1148,7 @@ def download_problem():
     batch = request.args.get("batch")
     if not batch:
         abort(400)
-    orders = Order.query.filter_by(import_batch=batch, status="Проблема").all()
+    orders = Order.query.filter_by(import_batch_label=batch, status="Проблема").all()
     buf = _orders_to_excel(orders, include_comment=True)
     filename = f"problem_{batch}.xlsx"
     return send_file(
@@ -1285,7 +1285,7 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                         data["zone"] = detect_zone(lat, lon) if lat and lon else None
                     order_kwargs = {
                         **data,
-                        "import_batch": batch_name,
+                        "import_batch_label": batch_name,
                         "local_order_number": imported + 1,
                     }
                     order = Order(**order_kwargs)

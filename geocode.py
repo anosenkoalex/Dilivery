@@ -19,6 +19,19 @@ def is_inside_work_area(lat, lon):
         return True
 
 
+def _get_bbox():
+    area = WorkArea.query.first()
+    if not area:
+        return None
+    try:
+        geom = shape(json.loads(area.geojson)["geometry"])
+        minx, miny, maxx, maxy = geom.bounds
+        # Nominatim expects left, top, right, bottom (lon/lat)
+        return f"{minx},{maxy},{maxx},{miny}"
+    except Exception:
+        return None
+
+
 def geocode_address(address: str):
     """Return latitude, longitude and a flag indicating inclusion in work area."""
     global _last_request_time
@@ -29,14 +42,16 @@ def geocode_address(address: str):
     elapsed = now - _last_request_time
     if elapsed < 1:
         time.sleep(1 - elapsed)
+    bbox = _get_bbox()
     params = {
         "q": address,
         "format": "json",
         "limit": 1,
         "countrycodes": "kg",
-        "viewbox": "73.2,43.5,75.4,42.2",
-        "bounded": 1,
     }
+    if bbox:
+        params["viewbox"] = bbox
+        params["bounded"] = 1
     headers = {"User-Agent": "delivery_crm_app (bishkek only)"}
     try:
         resp = requests.get(

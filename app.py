@@ -399,11 +399,18 @@ def update_order(order_id):
         except ValueError:
             flash("Некорректные координаты", "warning")
     if order.address != old_address and not manual_coords:
-        lat, lng = geocode_address(order.address)
-        order.latitude = lat
-        order.longitude = lng
-        if lat and lng:
-            order.zone = detect_zone(lat, lng)
+        lat, lng, inside = geocode_address(order.address)
+        order.latitude = lat if inside else None
+        order.longitude = lng if inside else None
+        if lat is not None and lng is not None:
+            if inside:
+                order.zone = detect_zone(lat, lng)
+            else:
+                order.zone = None
+                flash(
+                    "Адрес вне рабочей области. Уточните адрес или укажите точку вручную.",
+                    "warning",
+                )
         else:
             order.zone = None
             flash("Не удалось определить координаты по адресу", "warning")
@@ -662,16 +669,35 @@ def workarea():
     return render_template("workarea/index.html", area=area, workarea=wa_json)
 
 
+@app.route("/api/workarea", methods=["POST"])
+@admin_required
+def api_workarea():
+    area = WorkArea.query.first()
+    data = request.get_json(silent=True) or {}
+    color = data.get("color") or request.form.get("color") or "#777777"
+    geojson = data.get("geojson") or request.form.get("geojson") or "{}"
+    if area:
+        area.color = color
+        area.geojson = geojson
+    else:
+        area = WorkArea(name="Рабочая область", color=color, geojson=geojson)
+        db.session.add(area)
+    db.session.commit()
+    return jsonify(success=True)
+
+
 @app.route("/zones")
 @admin_required
 def zones():
     work_area = WorkArea.query.first()
     wa_json = None
+    work_color = "#777777"
     if work_area:
         try:
             wa_json = json.loads(work_area.geojson).get("geometry")
         except Exception:
             wa_json = None
+        work_color = work_area.color
 
     zones = DeliveryZone.query.all()
     zones_dict = []
@@ -687,7 +713,7 @@ def zones():
             "polygon": poly,
         })
 
-    return render_template("zones.html", zones=zones_dict, workarea=wa_json)
+    return render_template("zones.html", zones=zones_dict, workarea=wa_json, workcolor=work_color)
 
 
 @app.route("/zones/new", methods=["GET", "POST"])
@@ -1286,10 +1312,15 @@ def run_import(job_id, path, batch_name, col_map=None, header=True, clear_old=Fa
                     if not data.get("client_name"):
                         data["client_name"] = "Неизвестный клиент"
                     if "address" in data and data["address"]:
-                        lat, lon = geocode_address(data["address"])
-                        data["latitude"] = lat
-                        data["longitude"] = lon
-                        data["zone"] = detect_zone(lat, lon) if lat and lon else None
+                        lat, lon, inside = geocode_address(data["address"])
+                        if lat is not None and lon is not None and inside:
+                            data["latitude"] = lat
+                            data["longitude"] = lon
+                            data["zone"] = detect_zone(lat, lon)
+                        else:
+                            data["latitude"] = None
+                            data["longitude"] = None
+                            data["zone"] = None
                     order_kwargs = {
                         **data,
                         "import_batch_id": batch.id,

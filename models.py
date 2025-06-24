@@ -4,6 +4,7 @@ from uuid import uuid4
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects.postgresql import UUID
+from werkzeug.security import check_password_hash
 
 db = SQLAlchemy()
 
@@ -69,6 +70,9 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(64), unique=True, nullable=False)
     password_hash = db.Column(db.String(512), nullable=False)
     role = db.Column(db.String(16), nullable=False)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 
 class ImportJob(db.Model):

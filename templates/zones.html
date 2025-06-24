@@ -84,7 +84,8 @@ window.addEventListener('DOMContentLoaded', function(){
 
   document.getElementById('saveWorkAreaBtn').addEventListener('click', function(){
       var gj=null; if(waLayer){ gj=waLayer.toGeoJSON().geometry; }
-      fetch('/work-area/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({color: document.getElementById('waColor').value, geojson: JSON.stringify(gj)})})
+      var val = gj ? {type:'Feature', geometry: gj} : null;
+      fetch('/work-area/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({color: document.getElementById('waColor').value, geojson: JSON.stringify(val)})})
         .then(function(r){ if(r.ok) location.reload(); });
   });
 });

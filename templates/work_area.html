@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Рабочая область</h2>
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Цвет</label>
+    <input type="color" class="form-control form-control-color" id="colorInput" name="color" value="{{ area.color }}">
+  </div>
+  <div id="map" style="height:500px;" class="mb-3"></div>
+  <input type="hidden" name="geojson" id="geojsonInput">
+  <button type="submit" class="btn btn-primary">Сохранить</button>
+</form>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.pm/dist/leaflet.pm.css" />
+<script src="https://unpkg.com/leaflet.pm/dist/leaflet.pm.min.js"></script>
+<script>
+var work = {{ workarea|tojson if workarea else 'null' }};
+var colorInput = document.getElementById('colorInput');
+var map = L.map('map').setView([42.8746, 74.6122], 12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+map.pm.addControls({ drawCircle:false, drawMarker:false, drawPolyline:false, drawCircleMarker:false, drawRectangle:false });
+var layer = null;
+if (work) {
+  const geo = L.geoJSON({ type: 'Feature', geometry: work }, { color: colorInput.value }).addTo(map);
+  geo.eachLayer(function(l){ layer = l; l.pm.enable(); });
+  map.fitBounds(geo.getBounds());
+}
+function updateGeo(){
+  var gj = null;
+  if(layer){
+    layer.setStyle({color: colorInput.value});
+    gj = layer.toGeoJSON().geometry;
+  }
+  document.getElementById('geojsonInput').value = JSON.stringify(gj);
+}
+map.on('pm:create', function(e){ if(layer) map.removeLayer(layer); layer = e.layer; layer.pm.enable(); updateGeo(); });
+map.on('pm:update', updateGeo);
+map.on('pm:remove', function(){ layer = null; updateGeo(); });
+colorInput.addEventListener('change', updateGeo);
+updateGeo();
+</script>
+{% endblock %}

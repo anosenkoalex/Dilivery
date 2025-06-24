@@ -636,53 +636,65 @@ def map_view():
     )
 
 
-@app.route("/workarea", methods=["GET", "POST"])
-@admin_required
-def workarea():
-    area = WorkArea.query.first()
+def _get_work_area_json(area):
     wa_json = None
     if area:
         try:
             wa_json = json.loads(area.geojson).get("geometry")
         except Exception:
             wa_json = None
+    return wa_json
+
+
+def _replace_work_area(name, color, geojson):
+    old = WorkArea.query.first()
+    if old:
+        db.session.delete(old)
+        db.session.commit()
+    area = WorkArea(name=name, color=color, geojson=geojson)
+    db.session.add(area)
+    db.session.commit()
+    return area
+
+
+@app.route("/workarea", methods=["GET", "POST"])
+@admin_required
+def workarea():
     if request.method == "POST":
+        name = request.form.get("name") or "Рабочая область"
         color = request.form.get("color") or "#777777"
         geojson = request.form.get("geojson") or "{}"
-        if area:
-            area.color = color
-            area.geojson = geojson
-        else:
-            area = WorkArea(name="Рабочая область", color=color, geojson=geojson)
-            db.session.add(area)
-        db.session.commit()
+        _replace_work_area(name, color, geojson)
         flash("Рабочая область сохранена", "success")
         return redirect(url_for("workarea"))
+
+    area = WorkArea.query.first()
     if not area:
         area = WorkArea(
             name="Рабочая область",
             color="#777777",
-            geojson=json.dumps(
-                {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": []}}
-            ),
+            geojson=json.dumps({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": []}}),
         )
-    return render_template("workarea/index.html", area=area, workarea=wa_json)
+    wa_json = _get_work_area_json(area)
+    return render_template("work_area.html", area=area, workarea=wa_json)
 
 
-@app.route("/api/workarea", methods=["POST"])
+@app.route("/work-area")
+@admin_required
+def work_area_page():
+    """Alias for workarea to match new route name."""
+    return workarea()
+
+
+@app.route("/work-area/save", methods=["POST"])
+@app.route("/api/workarea", methods=["POST"])  # backwards compatibility
 @admin_required
 def api_workarea():
-    area = WorkArea.query.first()
     data = request.get_json(silent=True) or {}
+    name = data.get("name") or request.form.get("name") or "Рабочая область"
     color = data.get("color") or request.form.get("color") or "#777777"
     geojson = data.get("geojson") or request.form.get("geojson") or "{}"
-    if area:
-        area.color = color
-        area.geojson = geojson
-    else:
-        area = WorkArea(name="Рабочая область", color=color, geojson=geojson)
-        db.session.add(area)
-    db.session.commit()
+    _replace_work_area(name, color, geojson)
     return jsonify(success=True)
 
 

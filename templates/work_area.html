@@ -8,7 +8,7 @@
   </div>
   <div id="map" style="height:500px;" class="mb-3"></div>
   <input type="hidden" name="geojson" id="geojsonInput">
-  <button type="submit" class="btn btn-primary">Сохранить</button>
+  <button type="submit" class="btn btn-primary">{{ 'Сохранить изменения' if exists else 'Сохранить' }}</button>
 </form>
 {% endblock %}
 {% block scripts %}
@@ -34,7 +34,8 @@ function updateGeo(){
     layer.setStyle({color: colorInput.value});
     gj = layer.toGeoJSON().geometry;
   }
-  document.getElementById('geojsonInput').value = JSON.stringify(gj);
+  var val = gj ? {type:'Feature', geometry: gj} : null;
+  document.getElementById('geojsonInput').value = JSON.stringify(val);
 }
 map.on('pm:create', function(e){ if(layer) map.removeLayer(layer); layer = e.layer; layer.pm.enable(); updateGeo(); });
 map.on('pm:update', updateGeo);

@@ -24,7 +24,7 @@ class Order(db.Model):
     phone = db.Column(db.String(64))
     address = db.Column(db.String(256))
     note = db.Column(db.Text)
-    import_batch = db.Column(db.String(64))
+    import_batch_label = db.Column(db.String(64))
     import_batch_id = db.Column(db.Integer, db.ForeignKey("import_batch.id"), nullable=True)
     local_order_number = db.Column(db.Integer)
     status = db.Column(db.String(64), default="Складская обработка")

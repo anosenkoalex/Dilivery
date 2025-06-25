@@ -28,10 +28,20 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
   function loadExisting() {
-    if (window.existingZone && window.existingZone.geometry && window.existingZone.geometry.coordinates) {
-      const poly = L.geoJSON(window.existingZone, { style: { color: colorInput.value } });
+    if (!window.existingZone) {
+      return;
+    }
+
+    let gj = window.existingZone;
+    if (gj.type !== 'Feature') {
+      gj = { type: 'Feature', geometry: gj };
+    }
+
+    if (gj.geometry && gj.geometry.coordinates) {
+      const poly = L.geoJSON(gj, { style: { color: colorInput.value } });
       drawnItems.addLayer(poly);
       map.fitBounds(poly.getBounds());
+      updateGeo();
     }
   }
 

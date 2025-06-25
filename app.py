@@ -630,20 +630,26 @@ def map_view():
             }
         )
 
+        geometry = None
         if z.geometry:
             try:
                 geometry = json.loads(z.geometry)
+                if isinstance(geometry, dict) and geometry.get("type") == "Feature" and geometry.get("geometry"):
+                    geometry = geometry.get("geometry")
             except Exception:
                 geometry = None
-            if geometry:
-                zones_geojson.append(
-                    {
-                        "id": z.id,
-                        "name": z.name,
-                        "color": z.color or "#3388ff",
-                        "geometry": geometry,
-                    }
-                )
+        if not geometry:
+            if poly:
+                geometry = {"type": "Polygon", "coordinates": [poly]}
+        if geometry:
+            zones_geojson.append(
+                {
+                    "id": z.id,
+                    "name": z.name,
+                    "color": z.color or "#3388ff",
+                    "geometry": geometry,
+                }
+            )
 
     return render_template(
         "map.html",
@@ -761,6 +767,8 @@ def get_zones():
         if z.geometry:
             try:
                 geo = json.loads(z.geometry)
+                if isinstance(geo, dict) and geo.get("type") == "Feature" and geo.get("geometry"):
+                    geo = geo.get("geometry")
             except Exception:
                 geo = None
         if not geo:
@@ -768,7 +776,10 @@ def get_zones():
                 coords = json.loads(z.polygon_json) if z.polygon_json else []
             except Exception:
                 coords = []
-            geo = {"type": "Polygon", "coordinates": [coords]}
+            if coords:
+                geo = {"type": "Polygon", "coordinates": [coords]}
+        if not geo:
+            continue
         feat = {
             "type": "Feature",
             "properties": {"id": z.id, "name": z.name, "color": z.color},
@@ -807,20 +818,25 @@ def zones():
             }
         )
 
+        geometry = None
         if z.geometry:
             try:
                 geometry = json.loads(z.geometry)
+                if isinstance(geometry, dict) and geometry.get("type") == "Feature" and geometry.get("geometry"):
+                    geometry = geometry.get("geometry")
             except Exception:
                 geometry = None
-            if geometry:
-                zones_geojson.append(
-                    {
-                        "id": z.id,
-                        "name": z.name,
-                        "color": z.color or "#3388ff",
-                        "geometry": geometry,
-                    }
-                )
+        if not geometry and poly:
+            geometry = {"type": "Polygon", "coordinates": [poly]}
+        if geometry:
+            zones_geojson.append(
+                {
+                    "id": z.id,
+                    "name": z.name,
+                    "color": z.color or "#3388ff",
+                    "geometry": geometry,
+                }
+            )
 
     return render_template(
         "zones.html",

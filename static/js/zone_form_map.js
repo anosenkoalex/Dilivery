@@ -24,6 +24,7 @@ window.addEventListener('DOMContentLoaded', () => {
         map.fitBounds(waLayer.getBounds());
       }
       loadExisting();
+      loadAllZones();
     });
 
   function loadExisting() {
@@ -32,6 +33,27 @@ window.addEventListener('DOMContentLoaded', () => {
       drawnItems.addLayer(poly);
       map.fitBounds(poly.getBounds());
     }
+  }
+
+  function loadAllZones() {
+    fetch('/api/zones')
+      .then(r => r.json())
+      .then(data => {
+        const features = data && (data.features || data);
+        if (features && Array.isArray(features)) {
+          features.forEach(f => {
+            L.geoJSON(f, {
+              style: {
+                color: f.properties ? f.properties.color : f.color,
+                weight: 1,
+                opacity: 0.25,
+                fillOpacity: 0.25
+              },
+              interactive: false
+            }).addTo(map);
+          });
+        }
+      });
   }
 
   const drawControl = new L.Control.Draw({

@@ -887,6 +887,9 @@ def edit_zone(zone_id=None):
             elif obj.get("geometry") and obj["geometry"].get("type") == "Polygon":
                 coords = obj["geometry"].get("coordinates", [])
         polygon_coords = coords[0] if coords else []
+        if not polygon_coords:
+            flash("Нарисуйте зону на карте", "danger")
+            return redirect(request.url)
         zone_geo = {
             "type": "Feature",
             "geometry": {"type": "Polygon", "coordinates": coords},
@@ -947,7 +950,7 @@ def edit_zone(zone_id=None):
             zone_geojson = None
 
     return render_template(
-        "zone_form.html",
+        "zones/edit_zone.html",
         zone=zone,
         new=new,
         zones=zones_dict,

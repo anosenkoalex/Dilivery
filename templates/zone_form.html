@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+{% if new %}
+<h2>Создание зоны</h2>
+{% else %}
+<h2>Редактирование зоны {{ zone.name }}</h2>
+{% endif %}
+<form method="post">
+  <div class="mb-3">
+    <label class="form-label">Название</label>
+    <input type="text" class="form-control" name="name" value="{{ zone.name }}">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Цвет</label>
+    <input type="color" class="form-control form-control-color" id="colorInput" name="color" value="{{ zone.color }}">
+  </div>
+  <div id="zone-map" class="map-responsive leaflet-map mb-3"></div>
+  <input type="hidden" name="geojson" id="geojsonInput">
+  <button type="submit" class="btn btn-primary">Сохранить</button>
+  <a href="{{ url_for('zones') }}" class="btn btn-secondary">Отмена</a>
+</form>
+{% endblock %}
+{% block scripts %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+<script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+<script>
+  window.existingZone = {{ zone_geojson|tojson if zone_geojson else 'null' }};
+</script>
+<script src="{{ url_for('static', filename='js/zone_form_map.js') }}"></script>
+{% endblock %}

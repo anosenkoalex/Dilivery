@@ -705,6 +705,38 @@ def api_workarea():
     return jsonify(success=True)
 
 
+@app.route("/api/work-area")
+@login_required
+def get_work_area():
+    """Return work area GeoJSON with color"""
+    area = WorkArea.query.first()
+    wa_json = _get_work_area_json(area)
+    if not area or not wa_json:
+        return jsonify(None)
+    feature = {"type": "Feature", "properties": {"color": area.color}, "geometry": wa_json}
+    return jsonify(feature)
+
+
+@app.route("/api/zones")
+@login_required
+def get_zones():
+    """Return all delivery zones as GeoJSON FeatureCollection"""
+    zones = DeliveryZone.query.all()
+    features = []
+    for z in zones:
+        try:
+            coords = json.loads(z.polygon_json) if z.polygon_json else []
+        except Exception:
+            coords = []
+        feat = {
+            "type": "Feature",
+            "properties": {"id": z.id, "name": z.name, "color": z.color},
+            "geometry": {"type": "Polygon", "coordinates": [coords]},
+        }
+        features.append(feat)
+    return jsonify({"type": "FeatureCollection", "features": features})
+
+
 @app.route("/zones")
 @admin_required
 def zones():
@@ -762,26 +794,30 @@ def edit_zone(zone_id=None):
     if request.method == "POST":
         name = request.form.get("name") or zone.name
         color = request.form.get("color") or zone.color
-        polygon = request.form.get("polygon") or request.form.get("geojson")
-        if not polygon and request.form.get("polygon") is None:
-            polygon = zone.polygon_json
-
-        coords = json.loads(polygon) if polygon else []
-        zone_geo = {
-            "type": "Feature",
-            "geometry": {"type": "Polygon", "coordinates": [coords]},
-        }
-        if wa and wa_json and not shape(wa_json).contains(shape(zone_geo["geometry"])):
+        geojson = request.form.get("geojson") or request.form.get("polygon") or "{}"
+        try:
+            obj = json.loads(geojson)
+        except Exception:
+            obj = {}
+        coords = []
+        if isinstance(obj, dict):
+            if obj.get("type") == "Polygon":
+                coords = obj.get("coordinates", [])
+            elif obj.get("geometry") and obj["geometry"].get("type") == "Polygon":
+                coords = obj["geometry"].get("coordinates", [])
+        polygon_coords = coords[0] if coords else []
+        zone_geo = {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": coords}}
+        if wa and wa_json and coords and not shape(wa_json).contains(shape(zone_geo["geometry"])):
             flash("Зона должна быть внутри рабочей области", "danger")
             return redirect(url_for("zones"))
 
         if new:
-            zone = DeliveryZone(name=name, color=color, polygon_json=polygon)
+            zone = DeliveryZone(name=name, color=color, polygon_json=json.dumps(polygon_coords, ensure_ascii=False))
             db.session.add(zone)
         else:
             zone.name = name
             zone.color = color
-            zone.polygon_json = polygon
+            zone.polygon_json = json.dumps(polygon_coords, ensure_ascii=False)
         db.session.commit()
         flash("Зона создана" if new else "Зона обновлена", "success")
         return redirect(url_for("zones"))
@@ -799,13 +835,22 @@ def edit_zone(zone_id=None):
             "color": z.color,
             "polygon": poly,
         })
+    zone_geojson = None
+    try:
+        coords = json.loads(zone.polygon_json) if zone.polygon_json else []
+        if coords:
+            zone_geojson = {"type": "Polygon", "coordinates": [coords]}
+    except Exception:
+        zone_geojson = None
+
     return render_template(
-        "edit_zone.html",
+        "zone_form.html",
         zone=zone,
         new=new,
         zones=zones_dict,
         workarea=wa_json,
         workcolor=work_color,
+        zone_geojson=zone_geojson,
     )
 
 

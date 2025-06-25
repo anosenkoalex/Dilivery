@@ -772,6 +772,7 @@ def zones():
 
     zones = DeliveryZone.query.all()
     zones_dict = []
+    zones_geo = []
     for z in zones:
         try:
             poly = json.loads(z.polygon_json) if z and z.polygon_json else []
@@ -784,12 +785,27 @@ def zones():
             "polygon": poly,
         })
 
+        zone_gj = None
+        if z.geometry:
+            try:
+                zone_gj = json.loads(z.geometry)
+            except Exception:
+                zone_gj = None
+        if not zone_gj:
+            zone_gj = {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [poly]}}
+        if isinstance(zone_gj, dict) and zone_gj.get("type") == "Feature":
+            geometry = zone_gj.get("geometry")
+        else:
+            geometry = zone_gj
+        zones_geo.append({"name": z.name, "color": z.color, "geometry": geometry})
+
     return render_template(
         "zones.html",
         zones=zones_dict,
         workarea=wa_json,
         workcolor=work_color,
         wa_exists=wa_exists,
+        zones_geo=zones_geo,
     )
 
 

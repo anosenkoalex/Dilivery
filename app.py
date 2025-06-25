@@ -724,14 +724,22 @@ def get_zones():
     zones = DeliveryZone.query.all()
     features = []
     for z in zones:
-        try:
-            coords = json.loads(z.polygon_json) if z.polygon_json else []
-        except Exception:
-            coords = []
+        geo = None
+        if z.geometry:
+            try:
+                geo = json.loads(z.geometry)
+            except Exception:
+                geo = None
+        if not geo:
+            try:
+                coords = json.loads(z.polygon_json) if z.polygon_json else []
+            except Exception:
+                coords = []
+            geo = {"type": "Polygon", "coordinates": [coords]}
         feat = {
             "type": "Feature",
             "properties": {"id": z.id, "name": z.name, "color": z.color},
-            "geometry": {"type": "Polygon", "coordinates": [coords]},
+            "geometry": geo,
         }
         features.append(feat)
     return jsonify({"type": "FeatureCollection", "features": features})
@@ -812,12 +820,18 @@ def edit_zone(zone_id=None):
             return redirect(url_for("zones"))
 
         if new:
-            zone = DeliveryZone(name=name, color=color, polygon_json=json.dumps(polygon_coords, ensure_ascii=False))
+            zone = DeliveryZone(
+                name=name,
+                color=color,
+                polygon_json=json.dumps(polygon_coords, ensure_ascii=False),
+                geometry=json.dumps(zone_geo, ensure_ascii=False),
+            )
             db.session.add(zone)
         else:
             zone.name = name
             zone.color = color
             zone.polygon_json = json.dumps(polygon_coords, ensure_ascii=False)
+            zone.geometry = json.dumps(zone_geo, ensure_ascii=False)
         db.session.commit()
         flash("Зона создана" if new else "Зона обновлена", "success")
         return redirect(url_for("zones"))
@@ -836,12 +850,18 @@ def edit_zone(zone_id=None):
             "polygon": poly,
         })
     zone_geojson = None
-    try:
-        coords = json.loads(zone.polygon_json) if zone.polygon_json else []
-        if coords:
-            zone_geojson = {"type": "Polygon", "coordinates": [coords]}
-    except Exception:
-        zone_geojson = None
+    if zone.geometry:
+        try:
+            zone_geojson = json.loads(zone.geometry)
+        except Exception:
+            zone_geojson = None
+    if not zone_geojson:
+        try:
+            coords = json.loads(zone.polygon_json) if zone.polygon_json else []
+            if coords:
+                zone_geojson = {"type": "Polygon", "coordinates": [coords]}
+        except Exception:
+            zone_geojson = None
 
     return render_template(
         "zone_form.html",

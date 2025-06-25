@@ -1,7 +1,8 @@
 window.addEventListener('DOMContentLoaded', () => {
   const colorInput = document.getElementById('colorInput');
   const geoInput = document.getElementById('geojsonInput');
-  const map = L.map('zone-map').setView([42.8746, 74.6122], 12);
+  const form = document.querySelector('form');
+  const map = L.map('zoneMap').setView([42.8746, 74.6122], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
@@ -26,11 +27,10 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
   function loadExisting() {
-    if (window.existingZone && window.existingZone.coordinates) {
-      const poly = L.polygon(window.existingZone.coordinates[0].map(p => [p[1], p[0]]), { color: colorInput.value });
+    if (window.existingZone && window.existingZone.geometry && window.existingZone.geometry.coordinates) {
+      const poly = L.geoJSON(window.existingZone, { style: { color: colorInput.value } });
       drawnItems.addLayer(poly);
       map.fitBounds(poly.getBounds());
-      updateGeo();
     }
   }
 
@@ -43,12 +43,12 @@ window.addEventListener('DOMContentLoaded', () => {
   function updateGeo() {
     let gj = null;
     drawnItems.eachLayer(l => {
-      if (l instanceof L.Polygon) {
-        l.setStyle({ color: colorInput.value });
+      if (l.toGeoJSON) {
+        if (l.setStyle) l.setStyle({ color: colorInput.value });
         gj = l.toGeoJSON();
       }
     });
-    geoInput.value = gj ? JSON.stringify(gj.geometry) : '';
+    geoInput.value = gj ? JSON.stringify(gj) : '';
   }
 
   map.on('draw:created', e => {
@@ -67,4 +67,15 @@ window.addEventListener('DOMContentLoaded', () => {
   map.on('draw:deleted', updateGeo);
 
   colorInput.addEventListener('change', updateGeo);
+
+  form.addEventListener('submit', e => {
+    const layers = drawnItems.getLayers();
+    if (layers.length === 0) {
+      alert('Нарисуйте зону на карте');
+      e.preventDefault();
+      return;
+    }
+    const zoneGeoJSON = layers[0].toGeoJSON();
+    geoInput.value = JSON.stringify(zoneGeoJSON);
+  });
 });

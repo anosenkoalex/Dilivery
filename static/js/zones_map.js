@@ -30,7 +30,11 @@ window.addEventListener('DOMContentLoaded', () => {
     if (features && Array.isArray(features)) {
       features.forEach(f => {
         const layer = L.geoJSON(f, {
-          style: { color: f.properties ? f.properties.color : f.color }
+          style: {
+            color: f.properties ? f.properties.color : f.color,
+            weight: 2,
+            fillOpacity: 0.2
+          }
         });
         const name = f.properties ? f.properties.name : f.name;
         if (name) {

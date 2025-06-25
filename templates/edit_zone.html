@@ -24,8 +24,9 @@
 {% block scripts %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css" />
-<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-editable/1.2.0/Leaflet.Editable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
 <script>
 var existing = JSON.parse({{ zone.polygon_json|tojson|safe }});
@@ -33,6 +34,7 @@ var workArea = {{ workarea|tojson if workarea else 'null' }};
 var workColor = {{ '"' + workcolor + '"' }};
 var colorInput = document.getElementById('colorInput');
 var map = L.map('map').setView([42.8746, 74.6122], 12);
+map.editTools = new L.Editable(map);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap contributors'
@@ -57,9 +59,13 @@ if (workArea) {
 }
 
 if (existing.length) {
-    var poly = L.polygon(existing.map(function(p){ return [p[1], p[0]];}), {color: colorInput.value});
+    var poly = L.polygon(existing.map(function(p){ return [p[1], p[0]];}), {
+        color: colorInput.value,
+        editable: true
+    });
     drawnItems.addLayer(poly);
     map.fitBounds(poly.getBounds());
+    attachEditable(poly);
 }
 
 var drawControl = new L.Control.Draw({
@@ -67,6 +73,14 @@ var drawControl = new L.Control.Draw({
     draw: {polygon: true, marker:false, polyline:false, rectangle:false, circle:false, circlemarker:false}
 });
 map.addControl(drawControl);
+
+function attachEditable(layer){
+    if(!layer) return;
+    if(layer.enableEdit) layer.enableEdit();
+    layer.on('editable:dragend', updatePolygon);
+    layer.on('editable:vertex:dragend', updatePolygon);
+    layer.on('editable:vertex:deleted', updatePolygon);
+}
 
 function updatePolygon(){
     var coords = [];
@@ -94,6 +108,7 @@ map.on(L.Draw.Event.CREATED, function(e){
         alert('Зона выходит за пределы рабочей области.');
     }else{
         drawnItems.addLayer(e.layer);
+        attachEditable(e.layer);
     }
     updatePolygon();
 });
@@ -102,6 +117,7 @@ map.on(L.Draw.Event.EDITED, function(e){
         if(!polygonWithinWork(l.getLatLngs()[0])){
             alert('Зона выходит за пределы рабочей области.');
         }
+        attachEditable(l);
     });
     updatePolygon();
 });

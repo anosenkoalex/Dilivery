@@ -1,6 +1,7 @@
 window.addEventListener('DOMContentLoaded', () => {
   const colorInput = document.getElementById('colorInput');
   const geoInput = document.getElementById('geojsonInput');
+  const geometryInput = document.getElementById('geometry-input');
   const form = document.querySelector('form');
   const map = L.map('zoneMap').setView([42.8746, 74.6122], 12);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -39,11 +40,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (gj.geometry && gj.geometry.coordinates) {
       const poly = L.geoJSON(gj, { style: { color: colorInput.value } });
-      drawnItems.addLayer(poly);
+      poly.eachLayer(l => drawnItems.addLayer(l));
       map.fitBounds(poly.getBounds());
-      if (poly.editing && poly.editing.enable) {
-        poly.editing.enable();
-      }
       updateGeo();
     }
   }
@@ -84,6 +82,10 @@ window.addEventListener('DOMContentLoaded', () => {
       }
     });
     geoInput.value = gj ? JSON.stringify(gj) : '';
+    if (geometryInput) {
+      const geom = gj && (gj.geometry || gj);
+      geometryInput.value = geom ? JSON.stringify(geom) : '';
+    }
   }
 
   map.on('draw:created', e => {
@@ -112,23 +114,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     const zoneGeoJSON = layers[0].toGeoJSON();
     geoInput.value = JSON.stringify(zoneGeoJSON);
-
-    if (window.zoneId) {
-      e.preventDefault();
-      fetch(`/zones/update/${window.zoneId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ geometry: zoneGeoJSON.geometry })
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data && data.success) {
-            form.submit();
-          } else {
-            alert('Ошибка сохранения');
-          }
-        })
-        .catch(() => alert('Ошибка сохранения'));
+    if (geometryInput) {
+      geometryInput.value = JSON.stringify(zoneGeoJSON.geometry);
     }
   });
 });

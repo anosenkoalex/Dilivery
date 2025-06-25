@@ -870,7 +870,12 @@ def edit_zone(zone_id=None):
     if request.method == "POST":
         name = request.form.get("name") or zone.name
         color = request.form.get("color") or zone.color
-        geojson = request.form.get("geojson") or request.form.get("polygon") or "{}"
+        geojson = (
+            request.form.get("geometry")
+            or request.form.get("geojson")
+            or request.form.get("polygon")
+            or "{}"
+        )
         try:
             obj = json.loads(geojson)
         except Exception:

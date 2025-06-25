@@ -360,12 +360,14 @@ def orders():
             poly = json.loads(z.polygon_json) if z and z.polygon_json else []
         except Exception:
             poly = []
-        zones_dict.append({
-            "id": z.id,
-            "name": z.name,
-            "color": z.color,
-            "polygon": poly,
-        })
+        zones_dict.append(
+            {
+                "id": z.id,
+                "name": z.name,
+                "color": z.color,
+                "polygon": poly,
+            }
+        )
 
     return render_template(
         "orders.html",
@@ -460,12 +462,14 @@ def set_coords(order_id):
             poly = json.loads(z.polygon_json) if z and z.polygon_json else []
         except Exception:
             poly = []
-        zones_dict.append({
-            "id": z.id,
-            "name": z.name,
-            "color": z.color,
-            "polygon": poly,
-        })
+        zones_dict.append(
+            {
+                "id": z.id,
+                "name": z.name,
+                "color": z.color,
+                "polygon": poly,
+            }
+        )
     return render_template("set_coords.html", order=order, zones=zones_dict)
 
 
@@ -611,17 +615,35 @@ def map_view():
 
     zones = DeliveryZone.query.all()
     zones_dict = []
+    zones_geojson = []
     for z in zones:
         try:
             poly = json.loads(z.polygon_json) if z and z.polygon_json else []
         except Exception:
             poly = []
-        zones_dict.append({
-            "id": z.id,
-            "name": z.name,
-            "color": z.color,
-            "polygon": poly,
-        })
+        zones_dict.append(
+            {
+                "id": z.id,
+                "name": z.name,
+                "color": z.color,
+                "polygon": poly,
+            }
+        )
+
+        if z.geometry:
+            try:
+                geometry = json.loads(z.geometry)
+            except Exception:
+                geometry = None
+            if geometry:
+                zones_geojson.append(
+                    {
+                        "id": z.id,
+                        "name": z.name,
+                        "color": z.color or "#3388ff",
+                        "geometry": geometry,
+                    }
+                )
 
     return render_template(
         "map.html",
@@ -675,11 +697,7 @@ def work_area():
     if request.method == "POST":
         name = request.form.get("name") or "Рабочая область"
         color = request.form.get("color") or "#777777"
-        geojson = (
-            request.form.get("geometry")
-            or request.form.get("geojson")
-            or "{}"
-        )
+        geojson = request.form.get("geometry") or request.form.get("geojson") or "{}"
         _replace_work_area(name, color, geojson)
         flash("Изменения сохранены", "success")
         return redirect(url_for("work_area"))
@@ -690,13 +708,12 @@ def work_area():
         area = WorkArea(
             name="Рабочая область",
             color="#777777",
-            geojson=json.dumps({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": []}}),
+            geojson=json.dumps(
+                {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": []}}
+            ),
         )
     wa_json = _get_work_area_json(area)
     return render_template("work_area.html", area=area, workarea=wa_json, exists=exists)
-
-
-
 
 
 @app.route("/work-area/save", methods=["POST"])
@@ -725,7 +742,11 @@ def get_work_area():
     wa_json = _get_work_area_json(area)
     if not area or not wa_json:
         return jsonify(None)
-    feature = {"type": "Feature", "properties": {"color": area.color}, "geometry": wa_json}
+    feature = {
+        "type": "Feature",
+        "properties": {"color": area.color},
+        "geometry": wa_json,
+    }
     return jsonify(feature)
 
 
@@ -771,22 +792,42 @@ def zones():
 
     zones = DeliveryZone.query.all()
     zones_dict = []
+    zones_geojson = []
     for z in zones:
         try:
             poly = json.loads(z.polygon_json) if z and z.polygon_json else []
         except Exception:
             poly = []
-        zones_dict.append({
-            "id": z.id,
-            "name": z.name,
-            "color": z.color,
-            "polygon": poly,
-        })
+        zones_dict.append(
+            {
+                "id": z.id,
+                "name": z.name,
+                "color": z.color,
+                "polygon": poly,
+            }
+        )
+
+        if z.geometry:
+            try:
+                geometry = json.loads(z.geometry)
+            except Exception:
+                geometry = None
+            if geometry:
+                zones_geojson.append(
+                    {
+                        "id": z.id,
+                        "name": z.name,
+                        "color": z.color or "#3388ff",
+                        "geometry": geometry,
+                    }
+                )
 
     return render_template(
         "zones.html",
         zones=zones_dict,
         wa_exists=wa_exists,
+        zones_geojson=zones_geojson,
+        workarea=wa_json,
     )
 
 
@@ -795,8 +836,10 @@ def zones():
 @admin_required
 def edit_zone(zone_id=None):
     new = zone_id is None
-    zone = DeliveryZone.query.get_or_404(zone_id) if zone_id else DeliveryZone(
-        name="", color="#3388ff", polygon_json="[]"
+    zone = (
+        DeliveryZone.query.get_or_404(zone_id)
+        if zone_id
+        else DeliveryZone(name="", color="#3388ff", polygon_json="[]")
     )
     wa = WorkArea.query.first()
     wa_json = _get_work_area_json(wa)
@@ -823,8 +866,16 @@ def edit_zone(zone_id=None):
             elif obj.get("geometry") and obj["geometry"].get("type") == "Polygon":
                 coords = obj["geometry"].get("coordinates", [])
         polygon_coords = coords[0] if coords else []
-        zone_geo = {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": coords}}
-        if wa and wa_json and coords and not shape(wa_json).contains(shape(zone_geo["geometry"])):
+        zone_geo = {
+            "type": "Feature",
+            "geometry": {"type": "Polygon", "coordinates": coords},
+        }
+        if (
+            wa
+            and wa_json
+            and coords
+            and not shape(wa_json).contains(shape(zone_geo["geometry"]))
+        ):
             flash("Зона должна быть внутри рабочей области", "danger")
             return redirect(url_for("zones"))
 
@@ -852,12 +903,14 @@ def edit_zone(zone_id=None):
             poly = json.loads(z.polygon_json) if z and z.polygon_json else []
         except Exception:
             poly = []
-        zones_dict.append({
-            "id": z.id,
-            "name": z.name,
-            "color": z.color,
-            "polygon": poly,
-        })
+        zones_dict.append(
+            {
+                "id": z.id,
+                "name": z.name,
+                "color": z.color,
+                "polygon": poly,
+            }
+        )
     zone_geojson = None
     if zone.geometry:
         try:
@@ -883,8 +936,6 @@ def edit_zone(zone_id=None):
     )
 
 
-
-
 @app.route("/zones/<int:zone_id>/delete")
 @admin_required
 def delete_zone(zone_id):
@@ -894,6 +945,21 @@ def delete_zone(zone_id):
     db.session.commit()
     flash("Зона удалена", "success")
     return redirect(url_for("zones"))
+
+
+@app.route("/zones/update/<int:zone_id>", methods=["POST"])
+@admin_required
+def update_zone_geometry(zone_id):
+    data = request.get_json() or {}
+    zone = DeliveryZone.query.get(zone_id)
+    if not zone:
+        return jsonify({"success": False, "error": "Zone not found"}), 404
+    geometry = data.get("geometry")
+    if not geometry:
+        return jsonify({"success": False, "error": "No geometry"}), 400
+    zone.geometry = json.dumps(geometry, ensure_ascii=False)
+    db.session.commit()
+    return jsonify({"success": True})
 
 
 @app.route("/couriers")
@@ -1171,7 +1237,9 @@ def export_history():
 @admin_required
 def reports():
     batches = [
-        b[0] for b in db.session.query(Order.import_batch_label).distinct().all() if b[0]
+        b[0]
+        for b in db.session.query(Order.import_batch_label).distinct().all()
+        if b[0]
     ]
     batches.sort()
     return render_template("reports.html", batches=batches)

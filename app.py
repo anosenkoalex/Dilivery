@@ -711,6 +711,12 @@ def zones():
     work_area = WorkArea.query.first()
     wa_json = _get_work_area_json(work_area)
     work_color = work_area.color if work_area else "#777777"
+    wa_exists = bool(
+        wa_json
+        and isinstance(wa_json, dict)
+        and wa_json.get("coordinates")
+        and len(wa_json["coordinates"]) > 0
+    )
 
     zones = DeliveryZone.query.all()
     zones_dict = []
@@ -726,7 +732,13 @@ def zones():
             "polygon": poly,
         })
 
-    return render_template("zones.html", zones=zones_dict, workarea=wa_json, workcolor=work_color)
+    return render_template(
+        "zones.html",
+        zones=zones_dict,
+        workarea=wa_json,
+        workcolor=work_color,
+        wa_exists=wa_exists,
+    )
 
 
 @app.route("/zones/new", methods=["GET", "POST"])
@@ -737,6 +749,16 @@ def edit_zone(zone_id=None):
     zone = DeliveryZone.query.get_or_404(zone_id) if zone_id else DeliveryZone(
         name="", color="#3388ff", polygon_json="[]"
     )
+    wa = WorkArea.query.first()
+    wa_json = _get_work_area_json(wa)
+    if not (
+        wa_json
+        and isinstance(wa_json, dict)
+        and wa_json.get("coordinates")
+        and len(wa_json["coordinates"]) > 0
+    ):
+        flash("Сначала задайте рабочую область", "danger")
+        return redirect(url_for("work_area"))
     if request.method == "POST":
         name = request.form.get("name") or zone.name
         color = request.form.get("color") or zone.color
@@ -749,8 +771,6 @@ def edit_zone(zone_id=None):
             "type": "Feature",
             "geometry": {"type": "Polygon", "coordinates": [coords]},
         }
-        wa = WorkArea.query.first()
-        wa_json = _get_work_area_json(wa)
         if wa and wa_json and not shape(wa_json).contains(shape(zone_geo["geometry"])):
             flash("Зона должна быть внутри рабочей области", "danger")
             return redirect(url_for("zones"))
@@ -765,8 +785,6 @@ def edit_zone(zone_id=None):
         db.session.commit()
         flash("Зона создана" if new else "Зона обновлена", "success")
         return redirect(url_for("zones"))
-    wa = WorkArea.query.first()
-    wa_json = _get_work_area_json(wa)
     work_color = wa.color if wa else "#777777"
     zones = DeliveryZone.query.all()
     zones_dict = []

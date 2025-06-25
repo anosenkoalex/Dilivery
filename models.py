@@ -46,6 +46,7 @@ class DeliveryZone(db.Model):
     name = db.Column(db.String(64), nullable=False)
     color = db.Column(db.String(32), default="#3388ff")
     polygon_json = db.Column(db.Text, nullable=False)
+    geometry = db.Column(db.Text)
 
 
 class WorkArea(db.Model):

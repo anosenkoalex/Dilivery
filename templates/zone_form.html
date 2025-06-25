@@ -28,6 +28,7 @@
 <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
 <script>
   window.existingZone = {{ zone_geojson|tojson if zone_geojson else 'null' }};
+  window.zoneId = {{ zone.id if not new else 'null' }};
 </script>
 <script src="{{ url_for('static', filename='js/zone_form_map.js') }}"></script>
 {% endblock %}

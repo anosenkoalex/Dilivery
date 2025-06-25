@@ -34,5 +34,13 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+<script>
+  window.deliveryZones = {{ zones_geojson | tojson }};
+  {% if workarea %}
+  window.workArea = {{ {'geometry': workarea} | tojson }};
+  {% else %}
+  window.workArea = null;
+  {% endif %}
+</script>
 <script src="{{ url_for('static', filename='js/zones_map.js') }}"></script>
 {% endblock %}

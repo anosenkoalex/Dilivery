@@ -41,6 +41,9 @@ window.addEventListener('DOMContentLoaded', () => {
       const poly = L.geoJSON(gj, { style: { color: colorInput.value } });
       drawnItems.addLayer(poly);
       map.fitBounds(poly.getBounds());
+      if (poly.editing && poly.editing.enable) {
+        poly.editing.enable();
+      }
       updateGeo();
     }
   }
@@ -109,5 +112,23 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     const zoneGeoJSON = layers[0].toGeoJSON();
     geoInput.value = JSON.stringify(zoneGeoJSON);
+
+    if (window.zoneId) {
+      e.preventDefault();
+      fetch(`/zones/update/${window.zoneId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ geometry: zoneGeoJSON.geometry })
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.success) {
+            form.submit();
+          } else {
+            alert('Ошибка сохранения');
+          }
+        })
+        .catch(() => alert('Ошибка сохранения'));
+    }
   });
 });

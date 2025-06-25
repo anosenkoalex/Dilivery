@@ -37,7 +37,7 @@
 <script>
   window.deliveryZones = {{ zones_geojson | tojson }};
   {% if workarea %}
-  window.workArea = {{ {'geometry': workarea} | tojson }};
+  window.workArea = {{ workarea | tojson }};
   {% else %}
   window.workArea = null;
   {% endif %}

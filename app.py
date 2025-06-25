@@ -656,12 +656,14 @@ def _replace_work_area(name, color, geojson):
         obj = {"type": "Feature", "geometry": obj}
     geojson = json.dumps(obj, ensure_ascii=False)
 
-    old = WorkArea.query.first()
-    if old:
-        db.session.delete(old)
-        db.session.commit()
-    area = WorkArea(name=name, color=color, geojson=geojson)
-    db.session.add(area)
+    area = WorkArea.query.first()
+    if not area:
+        area = WorkArea(name=name, color=color, geojson=geojson)
+        db.session.add(area)
+    else:
+        area.name = name
+        area.color = color
+        area.geojson = geojson
     db.session.commit()
     return area
 
@@ -673,9 +675,13 @@ def work_area():
     if request.method == "POST":
         name = request.form.get("name") or "Рабочая область"
         color = request.form.get("color") or "#777777"
-        geojson = request.form.get("geojson") or "{}"
+        geojson = (
+            request.form.get("geometry")
+            or request.form.get("geojson")
+            or "{}"
+        )
         _replace_work_area(name, color, geojson)
-        flash("Рабочая область сохранена", "success")
+        flash("Изменения сохранены", "success")
         return redirect(url_for("work_area"))
 
     area = WorkArea.query.first()
@@ -700,7 +706,13 @@ def api_workarea():
     data = request.get_json(silent=True) or {}
     name = data.get("name") or request.form.get("name") or "Рабочая область"
     color = data.get("color") or request.form.get("color") or "#777777"
-    geojson = data.get("geojson") or request.form.get("geojson") or "{}"
+    geojson = (
+        data.get("geometry")
+        or request.form.get("geometry")
+        or data.get("geojson")
+        or request.form.get("geojson")
+        or "{}"
+    )
     _replace_work_area(name, color, geojson)
     return jsonify(success=True)
 

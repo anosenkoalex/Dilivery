@@ -326,11 +326,8 @@ def orders():
 
     batch_filter = request.args.get("batch")
     batches = ImportBatch.query.order_by(ImportBatch.created_at.desc()).all()
-    if batch_filter != "all":
-        if not batch_filter and batches:
-            batch_filter = batches[0].name
-        if batch_filter:
-            batches = [b for b in batches if b.name == batch_filter]
+    if batch_filter and batch_filter != "all":
+        batches = [b for b in batches if b.name == batch_filter]
 
     if batches:
         for batch in batches:
@@ -374,6 +371,7 @@ def orders():
         orders=all_orders,
         orders_by_zone=orders_by_zone,
         orders_by_batch=orders_by_batch,
+        import_batches=batches,
         couriers=couriers_list,
         zones=zones_dict,
     )

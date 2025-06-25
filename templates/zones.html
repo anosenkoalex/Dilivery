@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 {% block content %}
 <h2>Зоны доставки</h2>
-<a class="btn btn-primary mb-3" href="{{ url_for('edit_zone', new=True) }}">Создать зону</a>
+{% if not wa_exists %}
+<div class="alert alert-warning">Сначала задайте рабочую область</div>
+{% endif %}
+<a class="btn btn-primary mb-3{% if not wa_exists %} disabled{% endif %}" href="{% if wa_exists %}{{ url_for('edit_zone', new=True) }}{% else %}#{% endif %}">Создать зону</a>
 <div class="table-responsive card">
 <table class="table table-striped mb-3">
     <thead>

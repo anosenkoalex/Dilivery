@@ -5,28 +5,28 @@ window.addEventListener('DOMContentLoaded', () => {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  Promise.all([
-    fetch('/api/zones').then(r => r.json()),
-    fetch('/api/work-area').then(r => r.json())
-  ]).then(([zones, workArea]) => {
-    const group = L.featureGroup().addTo(map);
-    if (zones && zones.features) {
-      zones.features.forEach(f => {
-        const layer = L.geoJSON(f, {
-          style: { color: f.properties.color }
+  const group = L.featureGroup().addTo(map);
+
+  if (window.deliveryZones && window.deliveryZones.length) {
+    window.deliveryZones.forEach(zone => {
+      if (zone.geometry) {
+        const layer = L.geoJSON({ type: 'Feature', geometry: zone.geometry }, {
+          style: { color: zone.color }
         });
-        layer.bindPopup(f.properties.name);
+        layer.bindPopup(zone.name);
         group.addLayer(layer);
-      });
-    }
-    if (workArea && workArea.geometry) {
-      const waLayer = L.geoJSON(workArea, {
-        style: { color: '#777777', weight: 1, fillOpacity: 0.2, dashArray: '5 5' }
-      });
-      group.addLayer(waLayer);
-    }
-    if (group.getLayers().length) {
-      map.fitBounds(group.getBounds());
-    }
-  });
+      }
+    });
+  }
+
+  if (window.workArea && window.workArea.geometry) {
+    const waLayer = L.geoJSON(window.workArea, {
+      style: { color: '#888888', opacity: 0.2, fillOpacity: 0.1 }
+    });
+    group.addLayer(waLayer);
+  }
+
+  if (group.getLayers().length) {
+    map.fitBounds(group.getBounds());
+  }
 });

@@ -29,67 +29,10 @@
     <div id="zones-map" class="leaflet-map"></div>
 </div>
 
-<div class="modal fade" id="workAreaModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Рабочая область</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">Цвет</label>
-          <input type="color" class="form-control form-control-color" id="waColor" value="{{ workcolor }}">
-        </div>
-        <div id="workAreaMap" style="height:400px;"></div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
-        <button type="button" id="saveWorkAreaBtn" class="btn btn-primary">Сохранить</button>
-      </div>
-    </div>
-  </div>
-</div>
 {% endblock %}
 {% block scripts %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
-<script>
-window.addEventListener('DOMContentLoaded', function(){
-  var zones = {{ zones|tojson }};
-  var workarea = {{ workarea|tojson if workarea else 'null' }};
-  var workColor = {{ '"' + workcolor + '"' }};
-  var map = initZonesMap(zones);
-  if (workarea) {
-      var waLayer = L.geoJSON({ type: 'Feature', geometry: workarea }, {
-          style: { color: workColor, weight: 1, fillOpacity: 0.2, dashArray: '5 5' }
-      }).addTo(map);
-      map.fitBounds(waLayer.getBounds());
-  }
-
-  var waModal = document.getElementById('workAreaModal');
-  var waMap, waLayer;
-  waModal.addEventListener('shown.bs.modal', function(){
-      if(!waMap){
-          waMap = L.map('workAreaMap').setView([42.8746,74.6122],12);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'&copy; OpenStreetMap contributors'}).addTo(waMap);
-          waMap.pm.addControls({ drawCircle:false, drawMarker:false, drawPolyline:false, drawCircleMarker:false, drawRectangle:false });
-          if(workarea){
-              var g = L.geoJSON({type:'Feature', geometry: workarea},{color: document.getElementById('waColor').value}).addTo(waMap);
-              g.eachLayer(function(l){waLayer=l;l.pm.enable();});
-              waMap.fitBounds(g.getBounds());
-          }
-          waMap.on('pm:create', function(e){ if(waLayer) waMap.removeLayer(waLayer); waLayer=e.layer; waLayer.pm.enable(); });
-      }
-      setTimeout(function(){ waMap.invalidateSize(); }, 0);
-  });
-
-  document.getElementById('saveWorkAreaBtn').addEventListener('click', function(){
-      var gj=null; if(waLayer){ gj=waLayer.toGeoJSON().geometry; }
-      var val = gj ? {type:'Feature', geometry: gj} : null;
-      fetch('/work-area/save', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({color: document.getElementById('waColor').value, geojson: JSON.stringify(val)})})
-        .then(function(r){ if(r.ok) location.reload(); });
-  });
-});
-</script>
+<script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+<script src="{{ url_for('static', filename='js/zones_map.js') }}"></script>
 {% endblock %}

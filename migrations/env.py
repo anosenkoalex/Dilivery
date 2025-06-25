@@ -14,7 +14,9 @@ if config.config_file_name is not None:
 
 # 👇 Подставляем URL из Flask-конфига
 url = app.config["SQLALCHEMY_DATABASE_URI"]
-config.set_main_option("sqlalchemy.url", url)
+escaped_url = url.replace('%', '%%')
+config.set_main_option("sqlalchemy.url", escaped_url)
+
 
 # 👇 Устанавливаем target_metadata из SQLAlchemy
 target_metadata = db.metadata

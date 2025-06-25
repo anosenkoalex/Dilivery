@@ -16,7 +16,11 @@ PORT = "5000"
 
   [[services.ports]]
     handlers = ["http"]
-    port = 5000
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
 
 [[mounts]]
   source = "backups"

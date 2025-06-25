@@ -7,26 +7,36 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const group = L.featureGroup().addTo(map);
 
-  if (window.deliveryZones && window.deliveryZones.length) {
-    window.deliveryZones.forEach(zone => {
-      if (zone.geometry) {
-        const layer = L.geoJSON({ type: 'Feature', geometry: zone.geometry }, {
-          style: { color: zone.color }
+  Promise.all([
+    fetch('/api/zones').then(r => r.json()),
+    fetch('/api/work-area').then(r => r.json())
+  ]).then(([zones, workArea]) => {
+    if (zones && zones.features) {
+      zones.features.forEach(feature => {
+        const layer = L.geoJSON(feature, {
+          style: { color: feature.properties.color }
         });
-        layer.bindPopup(zone.name);
+        if (feature.properties.name) {
+          layer.bindTooltip(feature.properties.name, { permanent: false });
+        }
         group.addLayer(layer);
-      }
-    });
-  }
+      });
+    }
 
-  if (window.workArea && window.workArea.geometry) {
-    const waLayer = L.geoJSON(window.workArea, {
-      style: { color: '#888888', opacity: 0.2, fillOpacity: 0.1 }
-    });
-    group.addLayer(waLayer);
-  }
+    if (workArea && workArea.geometry) {
+      const waLayer = L.geoJSON(workArea, {
+        style: {
+          color: '#555',
+          fillOpacity: 0.05,
+          dashArray: '4',
+          weight: 1
+        }
+      });
+      group.addLayer(waLayer);
+    }
 
-  if (group.getLayers().length) {
-    map.fitBounds(group.getBounds());
-  }
+    if (group.getLayers().length) {
+      map.fitBounds(group.getBounds());
+    }
+  });
 });

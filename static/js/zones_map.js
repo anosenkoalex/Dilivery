@@ -7,36 +7,46 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const group = L.featureGroup().addTo(map);
 
-  Promise.all([
-    fetch('/api/zones').then(r => r.json()),
-    fetch('/api/work-area').then(r => r.json())
-  ]).then(([zones, workArea]) => {
-    if (zones && zones.features) {
-      zones.features.forEach(feature => {
-        const layer = L.geoJSON(feature, {
-          style: { color: feature.properties.color }
+  async function loadMapData() {
+    group.clearLayers();
+
+    const [workArea, zones] = await Promise.all([
+      fetch('/api/work-area').then(r => r.json()),
+      fetch('/api/zones').then(r => r.json())
+    ]);
+
+    if (workArea && workArea.geometry) {
+      L.geoJSON(workArea, {
+        style: {
+          color: '#555',
+          weight: 2,
+          dashArray: '4',
+          fillOpacity: 0.07
+        }
+      }).addTo(group);
+    }
+
+    const features = zones && (zones.features || zones);
+    if (features && Array.isArray(features)) {
+      features.forEach(f => {
+        const layer = L.geoJSON(f, {
+          style: { color: f.properties ? f.properties.color : f.color }
         });
-        if (feature.properties.name) {
-          layer.bindTooltip(feature.properties.name, { permanent: false });
+        const name = f.properties ? f.properties.name : f.name;
+        if (name) {
+          layer.bindTooltip(name);
         }
         group.addLayer(layer);
       });
     }
 
-    if (workArea && workArea.geometry) {
-      const waLayer = L.geoJSON(workArea, {
-        style: {
-          color: '#555',
-          fillOpacity: 0.05,
-          dashArray: '4',
-          weight: 1
-        }
-      });
-      group.addLayer(waLayer);
-    }
-
     if (group.getLayers().length) {
       map.fitBounds(group.getBounds());
     }
-  });
+  }
+
+  loadMapData();
+
+  // Expose for reloading after create/edit/delete actions
+  window.refreshZonesMap = loadMapData;
 });
